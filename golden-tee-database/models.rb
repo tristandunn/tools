@@ -26,6 +26,24 @@ class Player < ActiveRecord::Base
       where(id: other_player_match_ids)
     end
   end
+
+  # Calculate average score for this player
+  # Optional since parameter filters to matches from that date forward
+  def average(since = nil)
+    participations = match_participations
+
+    if since
+      # Filter to matches from the given year onward
+      since_year = since.is_a?(Integer) ? since : since.year
+      match_ids = Match.where("year >= ?", since_year).pluck(:id)
+      participations = participations.where(match_id: match_ids)
+    end
+
+    scores = participations.pluck(:score)
+    return nil if scores.empty?
+
+    (scores.sum.to_f / scores.length).round(2)
+  end
 end
 
 class Course < ActiveRecord::Base

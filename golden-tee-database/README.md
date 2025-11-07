@@ -124,6 +124,11 @@ opponent_score = opponent_participation.score
 player.match_participations.won     # Participations where won: true
 player.match_participations.lost    # Participations where won: false
 
+# Calculate scoring averages
+all_time_avg = player.average           # All-time average score
+recent_avg = player.average(2024)       # Average since 2024
+# Can also pass Date/Time objects: player.average(3.years.ago)
+
 # Find matches at a specific course
 course = Course.find_by(name: "LEXINGTON STABLES")
 matches = Match.where(course_id: course.id)
