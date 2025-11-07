@@ -18,6 +18,13 @@ class Player < ActiveRecord::Base
     def lost
       merge(MatchParticipation.lost)
     end
+
+    # Filter matches to only those against a specific opponent
+    def against(other_player)
+      # Get match IDs where the other player also participated
+      other_player_match_ids = MatchParticipation.where(player_id: other_player.id).pluck(:match_id)
+      where(id: other_player_match_ids)
+    end
   end
 end
 

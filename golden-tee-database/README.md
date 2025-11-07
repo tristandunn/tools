@@ -104,6 +104,13 @@ lost_matches = player.matches.lost  # Returns Match records (chainable!)
 win_count = player.matches.won.count
 loss_count = player.matches.lost.count
 
+# Get matches against a specific opponent
+opponent = Player.find_by(name: "Matt Woods")
+head_to_head = player.matches.against(opponent)
+h2h_wins = player.matches.against(opponent).won.count
+h2h_losses = player.matches.against(opponent).lost.count
+# Chainable: player.matches.against(opponent).won
+
 # Get match details
 match = player.matches.won.first
 # Get player's score and opponent info
