@@ -68,6 +68,18 @@ This will:
 
 **Note:** The scraper automatically uses the statistics page to get the complete match history, not just the first page of results.
 
+### Scrape Missing Players
+
+```bash
+ruby scrape_missing.rb
+```
+
+This script finds all players in the database without nicknames (which means their full stats haven't been scraped yet) and scrapes them automatically. It:
+- Shows you the list of players to scrape
+- Asks for confirmation before starting
+- Scrapes each player with a 1-2 second delay between requests to avoid spamming the website
+- Handles errors gracefully and continues with the next player
+
 ### Run the Web UI
 
 ```bash
@@ -153,6 +165,7 @@ matches = Match.where(source_id: source.id, year: 2025)
 ## Files
 
 - `scraper.rb` - Main scraper script
+- `scrape_missing.rb` - Batch script to scrape players without nicknames
 - `models.rb` - ActiveRecord models and database schema
 - `web.rb` - Sinatra web UI for browsing players and stats
 - `query_example.rb` - Example queries to demonstrate database usage
