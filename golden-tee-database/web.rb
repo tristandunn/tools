@@ -25,6 +25,9 @@ get '/' do
     }
   end
 
+  # Filter out players with no wins
+  @players.reject! { |p| p[:wins] == 0 }
+
   # Sort by win percentage (descending), then by total matches (descending)
   @players.sort_by! { |p| [-p[:win_pct], -p[:total]] }
 
