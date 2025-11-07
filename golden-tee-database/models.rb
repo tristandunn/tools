@@ -1,4 +1,5 @@
 require 'active_record'
+require 'digest'
 
 # Establish database connection
 ActiveRecord::Base.establish_connection(
@@ -59,6 +60,39 @@ class Match < ActiveRecord::Base
   belongs_to :source
   has_many :match_participations, dependent: :destroy
   has_many :players, through: :match_participations
+
+  # Generate a unique fingerprint for a match based on players, scores, course, source, and year
+  def self.generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
+    # Sort player IDs and their scores together to ensure consistent ordering
+    if player1_id < player2_id
+      sorted_data = [player1_id, player1_score, player2_id, player2_score]
+    else
+      sorted_data = [player2_id, player2_score, player1_id, player1_score]
+    end
+
+    # Combine all match data and hash it
+    fingerprint_data = [sorted_data, course_id, source_id, year].flatten.join('-')
+    Digest::SHA256.hexdigest(fingerprint_data)
+  end
+
+  # Find or create a match with duplicate detection
+  def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
+    fingerprint = generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
+
+    # Try to find existing match by fingerprint
+    existing_match = Match.find_by(fingerprint: fingerprint)
+    return [existing_match, false] if existing_match
+
+    # Create new match if it doesn't exist
+    match = Match.create!(
+      course_id: course_id,
+      source_id: source_id,
+      year: year,
+      fingerprint: fingerprint
+    )
+
+    [match, true]
+  end
 end
 
 class MatchParticipation < ActiveRecord::Base
@@ -108,8 +142,16 @@ def setup_schema
         t.integer :course_id, null: false
         t.integer :source_id, null: false
         t.integer :year, null: false
+        t.string :fingerprint, null: false
         t.index :course_id
         t.index :source_id
+        t.index :fingerprint, unique: true
+      end
+    else
+      # Add fingerprint column if it doesn't exist
+      unless ActiveRecord::Base.connection.column_exists?(:matches, :fingerprint)
+        add_column :matches, :fingerprint, :string, null: false, default: ''
+        add_index :matches, :fingerprint, unique: true
       end
     end
 

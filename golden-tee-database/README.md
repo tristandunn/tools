@@ -34,8 +34,9 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 - `course_id` - Course where match was played (foreign key to courses)
 - `source_id` - Tournament/event (foreign key to sources)
 - `year` - Year the match was played
+- `fingerprint` - Unique hash of match data (prevents duplicates, indexed)
 
-**Note:** Player and score information is stored in the `match_participations` table to avoid duplication.
+**Note:** Player and score information is stored in the `match_participations` table to avoid duplication. The fingerprint ensures that scraping multiple players who played each other doesn't create duplicate match records.
 
 ### Match Participations
 - `id` - Primary key

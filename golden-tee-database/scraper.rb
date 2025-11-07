@@ -105,33 +105,38 @@ class GoldenTeeScraper
           # Find or create source
           source = Source.find_or_create_by(name: source_name)
 
-          # Create match record
-          match = Match.create!(
-            course_id: course.id,
-            source_id: source.id,
-            year: year
+          # Find or create match using fingerprint (returns [match, is_new])
+          match, is_new = Match.find_or_create_match(
+            winner.id, winner_score,
+            loser.id, loser_score,
+            course.id, source.id, year
           )
 
-          # Create match participations for both players
-          MatchParticipation.create!(
-            match_id: match.id,
-            player_id: winner.id,
-            score: winner_score,
-            won: true
-          )
+          # Only create participations if this is a new match
+          if is_new
+            # Create match participations for both players
+            MatchParticipation.create!(
+              match_id: match.id,
+              player_id: winner.id,
+              score: winner_score,
+              won: true
+            )
 
-          MatchParticipation.create!(
-            match_id: match.id,
-            player_id: loser.id,
-            score: loser_score,
-            won: false
-          )
+            MatchParticipation.create!(
+              match_id: match.id,
+              player_id: loser.id,
+              score: loser_score,
+              won: false
+            )
+          end
 
-          # Track if this was a win or loss for the current player
-          if winner.id == player.id
-            won_count += 1
-          elsif loser.id == player.id
-            lost_count += 1
+          # Track if this was a win or loss for the current player (only count new matches)
+          if is_new
+            if winner.id == player.id
+              won_count += 1
+            elsif loser.id == player.id
+              lost_count += 1
+            end
           end
         rescue => e
           puts "Error processing row: #{e.message}"
