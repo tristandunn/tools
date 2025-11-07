@@ -28,6 +28,9 @@ get '/' do
   # Filter out players with no wins
   @players.reject! { |p| p[:wins] == 0 }
 
+  # Filter out players without nicknames (means we haven't scraped their full stats)
+  @players.reject! { |p| p[:player].nickname.nil? || p[:player].nickname.empty? }
+
   # Sort by average score (descending/more negative = better), then by total matches (descending)
   @players.sort_by! { |p| [p[:average] || 0, -p[:total]] }
 
