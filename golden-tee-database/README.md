@@ -94,17 +94,26 @@ player = Player.find_by(name: "Andy Haas")
 # Find a player by remote_id (pegttour.com ID)
 player = Player.find_by(remote_id: 863)
 
-# Get all matches for a player (simple!)
+# Get all matches for a player
 all_matches = player.matches
 all_participations = player.match_participations
 
-# Get wins and losses
-wins = player.wins  # Returns MatchParticipation records where won: true
-losses = player.losses  # Returns MatchParticipation records where won: false
+# Get wins and losses (multiple ways)
+won_matches = player.won_matches       # Returns Match records (can chain queries)
+lost_matches = player.lost_matches     # Returns Match records (can chain queries)
+wins = player.wins                     # Returns MatchParticipation records
+losses = player.losses                 # Returns MatchParticipation records
 
 # Count wins and losses
-win_count = player.wins.count
-loss_count = player.losses.count
+win_count = player.won_matches.count   # Count using Match records
+loss_count = player.lost_matches.count # Count using Match records
+# OR
+win_count = player.wins.count          # Count using MatchParticipation records
+loss_count = player.losses.count       # Count using MatchParticipation records
+
+# Use scopes directly on match_participations
+player.match_participations.won        # MatchParticipations where won: true
+player.match_participations.lost       # MatchParticipations where won: false
 
 # Get match details from a participation
 participation = player.wins.first

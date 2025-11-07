@@ -8,18 +8,22 @@ ActiveRecord::Base.establish_connection(
 
 # Define models
 class Player < ActiveRecord::Base
-  has_many :matches_as_player1, class_name: 'Match', foreign_key: 'player1_id'
-  has_many :matches_as_player2, class_name: 'Match', foreign_key: 'player2_id'
   has_many :match_participations, dependent: :destroy
   has_many :matches, through: :match_participations
 
-  # Convenient scopes for wins and losses
+  # Associations for wins and losses that return Match records
+  has_many :won_participations, -> { won }, class_name: 'MatchParticipation'
+  has_many :won_matches, through: :won_participations, source: :match
+  has_many :lost_participations, -> { lost }, class_name: 'MatchParticipation'
+  has_many :lost_matches, through: :lost_participations, source: :match
+
+  # Convenient methods that return MatchParticipation records
   def wins
-    match_participations.where(won: true)
+    match_participations.won
   end
 
   def losses
-    match_participations.where(won: false)
+    match_participations.lost
   end
 end
 
@@ -42,6 +46,10 @@ end
 class MatchParticipation < ActiveRecord::Base
   belongs_to :match
   belongs_to :player
+
+  # Scopes for filtering by outcome
+  scope :won, -> { where(won: true) }
+  scope :lost, -> { where(won: false) }
 end
 
 # Create tables if they don't exist
