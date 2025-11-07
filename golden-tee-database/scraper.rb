@@ -1,0 +1,175 @@
+require 'nokogiri'
+require 'open-uri'
+require_relative 'models'
+
+class GoldenTeeScraper
+  def initialize(player_url)
+    @player_url = player_url
+    # Ensure we're using the statistics page to get all matches
+    @statistics_url = player_url.sub(/\/players\/(\d+).*/, '/players/\1/statistics')
+    @doc = nil
+  end
+
+  def scrape
+    setup_schema
+    fetch_page
+    player = extract_player_info
+    extract_matches(player)
+    puts "\nScraping completed successfully!"
+    print_summary(player)
+  end
+
+  private
+
+  def fetch_page
+    puts "Fetching #{@statistics_url}..."
+    @doc = Nokogiri::HTML(URI.open(@statistics_url))
+  end
+
+  def extract_player_info
+    # Extract player name and nickname
+    name = @doc.css('h1').first&.text&.strip
+
+    # Look for nickname in strong tag
+    nickname = nil
+    @doc.css('strong').each do |strong|
+      if strong.text.strip =~ /Nickname/i
+        parent = strong.parent
+        text_parts = parent.text.split('Nickname')
+        nickname = text_parts[1].strip if text_parts.length > 1
+        break
+      end
+    end
+
+    puts "\nPlayer: #{name}"
+    puts "Nickname: #{nickname || 'N/A'}"
+
+    player = Player.find_or_create_by(name: name)
+    player.update(nickname: nickname) if nickname && player.nickname != nickname
+    player
+  end
+
+  def extract_matches(player)
+    matches_won = extract_matches_from_tables(player)
+
+    puts "\nExtracted #{matches_won[:won]} matches won"
+    puts "Extracted #{matches_won[:lost]} matches lost"
+  end
+
+  def extract_matches_from_tables(player)
+    won_count = 0
+    lost_count = 0
+
+    # Find all tables with match data (headers include Winner and Loser)
+    @doc.css('table').each do |table|
+      headers = table.css('thead th').map { |th| th.text.strip }
+
+      # Skip if not a match table
+      next unless headers.include?("Winner") && headers.include?("Loser")
+
+      # Extract rows from table body
+      rows = table.css('tbody tr')
+
+      rows.each do |row|
+        begin
+          cells = row.css('td')
+          next if cells.length < 6
+
+          winner_name = cells[0].text.strip
+          winner_score = parse_score(cells[1].text)
+          loser_name = cells[2].text.strip
+          loser_score = parse_score(cells[3].text)
+          course_name = cells[4].text.strip
+          location = cells[5].text.strip
+
+          # Parse location to extract source and year
+          source_name, year = parse_location(location)
+
+          # Skip if we couldn't parse essential data
+          next unless winner_score && loser_score && year
+
+          # Find or create players
+          winner = Player.find_or_create_by(name: winner_name)
+          loser = Player.find_or_create_by(name: loser_name)
+
+          # Find or create course
+          course = Course.find_or_create_by(name: course_name)
+
+          # Find or create source
+          source = Source.find_or_create_by(name: source_name)
+
+          # Create match record - player1 is always the winner
+          Match.create!(
+            player1_id: winner.id,
+            player1_score: winner_score,
+            player2_id: loser.id,
+            player2_score: loser_score,
+            course_id: course.id,
+            source_id: source.id,
+            year: year
+          )
+
+          # Track if this was a win or loss for the current player
+          if winner.id == player.id
+            won_count += 1
+          elsif loser.id == player.id
+            lost_count += 1
+          end
+        rescue => e
+          puts "Error processing row: #{e.message}"
+        end
+      end
+    end
+
+    { won: won_count, lost: lost_count }
+  end
+
+  def parse_score(score_text)
+    # Extract score from text like "(-30)" or "-30"
+    match = score_text.match(/-?\d+/)
+    match ? match[0].to_i : nil
+  end
+
+  def parse_location(location)
+    # Location format: "Florida Open 2025" or similar
+    # Extract the year (last 4 digits)
+    year_match = location.match(/\b(20\d{2})\b/)
+    year = year_match ? year_match[1].to_i : nil
+
+    # Extract source name (everything before the year)
+    if year
+      source_name = location.gsub(/\b#{year}\b/, '').strip
+    else
+      source_name = location
+    end
+
+    [source_name, year]
+  end
+
+  def print_summary(player)
+    total_matches = Match.where(player1_id: player.id).or(Match.where(player2_id: player.id)).count
+    total_players = Player.count
+    total_courses = Course.count
+    total_sources = Source.count
+
+    puts "\n" + "="*50
+    puts "Summary:"
+    puts "="*50
+    puts "Total players in database: #{total_players}"
+    puts "Total courses: #{total_courses}"
+    puts "Total sources: #{total_sources}"
+    puts "Total matches for #{player.name}: #{total_matches}"
+    puts "="*50
+  end
+end
+
+if __FILE__ == $0
+  if ARGV.empty?
+    puts "Usage: ruby scraper.rb <player_url>"
+    puts "Example: ruby scraper.rb https://pegttour.com/players/863"
+    exit 1
+  end
+
+  scraper = GoldenTeeScraper.new(ARGV[0])
+  scraper.scrape
+end

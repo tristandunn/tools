@@ -1,0 +1,10 @@
+# Database files
+database.sqlite3
+*.sqlite3
+
+# Ruby/Bundle
+.bundle/
+vendor/bundle/
+
+# Debug files
+debug*.rb

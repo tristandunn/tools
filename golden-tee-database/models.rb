@@ -1,0 +1,77 @@
+require 'active_record'
+
+# Establish database connection
+ActiveRecord::Base.establish_connection(
+  adapter: 'sqlite3',
+  database: 'database.sqlite3'
+)
+
+# Define models
+class Player < ActiveRecord::Base
+  has_many :matches_as_player1, class_name: 'Match', foreign_key: 'player1_id'
+  has_many :matches_as_player2, class_name: 'Match', foreign_key: 'player2_id'
+end
+
+class Course < ActiveRecord::Base
+  has_many :matches
+end
+
+class Source < ActiveRecord::Base
+  has_many :matches
+end
+
+class Match < ActiveRecord::Base
+  belongs_to :player1, class_name: 'Player'
+  belongs_to :player2, class_name: 'Player'
+  belongs_to :course
+  belongs_to :source
+end
+
+# Create tables if they don't exist
+def setup_schema
+  ActiveRecord::Schema.define do
+    unless ActiveRecord::Base.connection.table_exists?(:players)
+      create_table :players do |t|
+        t.string :name, null: false
+        t.string :nickname
+        t.index :name, unique: true
+      end
+    end
+
+    unless ActiveRecord::Base.connection.table_exists?(:courses)
+      create_table :courses do |t|
+        t.string :name, null: false
+        t.index :name, unique: true
+      end
+    end
+
+    unless ActiveRecord::Base.connection.table_exists?(:sources)
+      create_table :sources do |t|
+        t.string :name, null: false
+        t.index :name, unique: true
+      end
+    end
+
+    unless ActiveRecord::Base.connection.table_exists?(:matches)
+      create_table :matches do |t|
+        t.integer :player1_id, null: false
+        t.integer :player1_score, null: false
+        t.integer :player2_id, null: false
+        t.integer :player2_score, null: false
+        t.integer :course_id, null: false
+        t.integer :source_id, null: false
+        t.integer :year, null: false
+        t.index :player1_id
+        t.index :player2_id
+        t.index :course_id
+        t.index :source_id
+      end
+    end
+  end
+
+  puts "Database schema created successfully!"
+end
+
+if __FILE__ == $0
+  setup_schema
+end
