@@ -9,21 +9,15 @@ ActiveRecord::Base.establish_connection(
 # Define models
 class Player < ActiveRecord::Base
   has_many :match_participations, dependent: :destroy
-  has_many :matches, through: :match_participations
+  has_many :matches, through: :match_participations do
+    # Extend the matches association with won/lost scopes
+    def won
+      merge(MatchParticipation.won)
+    end
 
-  # Associations for wins and losses that return Match records
-  has_many :won_participations, -> { won }, class_name: 'MatchParticipation'
-  has_many :won_matches, through: :won_participations, source: :match
-  has_many :lost_participations, -> { lost }, class_name: 'MatchParticipation'
-  has_many :lost_matches, through: :lost_participations, source: :match
-
-  # Convenient methods that return MatchParticipation records
-  def wins
-    match_participations.won
-  end
-
-  def losses
-    match_participations.lost
+    def lost
+      merge(MatchParticipation.lost)
+    end
   end
 end
 

@@ -96,29 +96,26 @@ player = Player.find_by(remote_id: 863)
 all_matches = player.matches
 all_participations = player.match_participations
 
-# Get wins and losses (multiple ways)
-won_matches = player.won_matches       # Returns Match records (can chain queries)
-lost_matches = player.lost_matches     # Returns Match records (can chain queries)
-wins = player.wins                     # Returns MatchParticipation records
-losses = player.losses                 # Returns MatchParticipation records
+# Get wins and losses
+won_matches = player.matches.won    # Returns Match records (chainable!)
+lost_matches = player.matches.lost  # Returns Match records (chainable!)
 
 # Count wins and losses
-win_count = player.won_matches.count   # Count using Match records
-loss_count = player.lost_matches.count # Count using Match records
-# OR
-win_count = player.wins.count          # Count using MatchParticipation records
-loss_count = player.losses.count       # Count using MatchParticipation records
+win_count = player.matches.won.count
+loss_count = player.matches.lost.count
 
-# Use scopes directly on match_participations
-player.match_participations.won        # MatchParticipations where won: true
-player.match_participations.lost       # MatchParticipations where won: false
-
-# Get match details from a participation
-participation = player.wins.first
-match = participation.match
-score = participation.score
-opponent_participation = match.match_participations.where.not(player_id: player.id).first
+# Get match details
+match = player.matches.won.first
+# Get player's score and opponent info
+andy_participation = match.match_participations.find { |p| p.player_id == player.id }
+opponent_participation = match.match_participations.find { |p| p.player_id != player.id }
+player_score = andy_participation.score
 opponent = opponent_participation.player
+opponent_score = opponent_participation.score
+
+# Access MatchParticipation records directly if needed
+player.match_participations.won     # Participations where won: true
+player.match_participations.lost    # Participations where won: false
 
 # Find matches at a specific course
 course = Course.find_by(name: "LEXINGTON STABLES")
