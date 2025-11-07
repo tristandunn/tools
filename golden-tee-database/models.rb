@@ -36,11 +36,10 @@ class Source < ActiveRecord::Base
 end
 
 class Match < ActiveRecord::Base
-  belongs_to :player1, class_name: 'Player'
-  belongs_to :player2, class_name: 'Player'
   belongs_to :course
   belongs_to :source
   has_many :match_participations, dependent: :destroy
+  has_many :players, through: :match_participations
 end
 
 class MatchParticipation < ActiveRecord::Base
@@ -87,15 +86,9 @@ def setup_schema
 
     unless ActiveRecord::Base.connection.table_exists?(:matches)
       create_table :matches do |t|
-        t.integer :player1_id, null: false
-        t.integer :player1_score, null: false
-        t.integer :player2_id, null: false
-        t.integer :player2_score, null: false
         t.integer :course_id, null: false
         t.integer :source_id, null: false
         t.integer :year, null: false
-        t.index :player1_id
-        t.index :player2_id
         t.index :course_id
         t.index :source_id
       end

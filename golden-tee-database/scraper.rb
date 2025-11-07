@@ -105,12 +105,8 @@ class GoldenTeeScraper
           # Find or create source
           source = Source.find_or_create_by(name: source_name)
 
-          # Create match record - player1 is always the winner
+          # Create match record
           match = Match.create!(
-            player1_id: winner.id,
-            player1_score: winner_score,
-            player2_id: loser.id,
-            player2_score: loser_score,
             course_id: course.id,
             source_id: source.id,
             year: year
@@ -202,7 +198,7 @@ class GoldenTeeScraper
   end
 
   def print_summary(player)
-    total_matches = Match.where(player1_id: player.id).or(Match.where(player2_id: player.id)).count
+    total_matches = player.matches.count
     total_players = Player.count
     total_courses = Course.count
     total_sources = Source.count

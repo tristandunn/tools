@@ -30,13 +30,11 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 
 ### Matches
 - `id` - Primary key
-- `player1_id` - Winner (foreign key to players)
-- `player1_score` - Winner's score
-- `player2_id` - Loser (foreign key to players)
-- `player2_score` - Loser's score
 - `course_id` - Course where match was played (foreign key to courses)
 - `source_id` - Tournament/event (foreign key to sources)
 - `year` - Year the match was played
+
+**Note:** Player and score information is stored in the `match_participations` table to avoid duplication.
 
 ### Match Participations
 - `id` - Primary key
