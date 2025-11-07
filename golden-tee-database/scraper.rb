@@ -30,6 +30,10 @@ class GoldenTeeScraper
     # Extract player name and nickname
     name = @doc.css('h1').first&.text&.strip
 
+    # Extract remote_id from URL
+    remote_id_match = @player_url.match(/\/players\/(\d+)/)
+    remote_id = remote_id_match ? remote_id_match[1].to_i : nil
+
     # Look for nickname in strong tag
     nickname = nil
     @doc.css('strong').each do |strong|
@@ -42,9 +46,10 @@ class GoldenTeeScraper
     end
 
     puts "\nPlayer: #{name}"
+    puts "Remote ID: #{remote_id || 'N/A'}"
     puts "Nickname: #{nickname || 'N/A'}"
 
-    player = Player.find_or_create_by(name: name)
+    player = find_or_create_player(name, remote_id)
     player.update(nickname: nickname) if nickname && player.nickname != nickname
     player
   end
@@ -76,8 +81,10 @@ class GoldenTeeScraper
           next if cells.length < 6
 
           winner_name = cells[0].text.strip
+          winner_remote_id = extract_remote_id(cells[0])
           winner_score = parse_score(cells[1].text)
           loser_name = cells[2].text.strip
+          loser_remote_id = extract_remote_id(cells[2])
           loser_score = parse_score(cells[3].text)
           course_name = cells[4].text.strip
           location = cells[5].text.strip
@@ -88,9 +95,9 @@ class GoldenTeeScraper
           # Skip if we couldn't parse essential data
           next unless winner_score && loser_score && year
 
-          # Find or create players
-          winner = Player.find_or_create_by(name: winner_name)
-          loser = Player.find_or_create_by(name: loser_name)
+          # Find or create players (use remote_id if available, otherwise fall back to name)
+          winner = find_or_create_player(winner_name, winner_remote_id)
+          loser = find_or_create_player(loser_name, loser_remote_id)
 
           # Find or create course
           course = Course.find_or_create_by(name: course_name)
@@ -144,6 +151,39 @@ class GoldenTeeScraper
     end
 
     [source_name, year]
+  end
+
+  def extract_remote_id(cell)
+    # Extract remote player ID from link like /players/863
+    link = cell.css('a').first
+    return nil unless link
+
+    href = link['href']
+    match = href.match(/\/players\/(\d+)/)
+    match ? match[1].to_i : nil
+  end
+
+  def find_or_create_player(name, remote_id)
+    # Try to find by remote_id first if available
+    if remote_id
+      player = Player.find_by(remote_id: remote_id)
+      if player
+        # Update name if it changed
+        player.update(name: name) if player.name != name
+        return player
+      end
+    end
+
+    # Fall back to finding by name
+    player = Player.find_by(name: name)
+    if player
+      # Update remote_id if we now have it
+      player.update(remote_id: remote_id) if remote_id && player.remote_id.nil?
+      return player
+    end
+
+    # Create new player
+    Player.create!(name: name, remote_id: remote_id)
   end
 
   def print_summary(player)

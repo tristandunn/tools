@@ -4,15 +4,18 @@ puts "=== Database Contents ==="
 puts
 
 puts "Players:"
-Player.all.each do |player|
+Player.all.limit(10).each do |player|
   nickname_text = player.nickname ? " (#{player.nickname})" : ""
-  puts "  - #{player.name}#{nickname_text}"
+  remote_id_text = player.remote_id ? " [ID: #{player.remote_id}]" : ""
+  puts "  - #{player.name}#{nickname_text}#{remote_id_text}"
 end
+puts "  ... (showing first 10 of #{Player.count} total)"
 
 puts "\nCourses:"
-Course.all.each do |course|
+Course.all.limit(10).each do |course|
   puts "  - #{course.name}"
 end
+puts "  ... (showing first 10 of #{Course.count} total)"
 
 puts "\nSources:"
 Source.all.each do |source|

@@ -32,9 +32,17 @@ def setup_schema
   ActiveRecord::Schema.define do
     unless ActiveRecord::Base.connection.table_exists?(:players)
       create_table :players do |t|
+        t.integer :remote_id
         t.string :name, null: false
         t.string :nickname
-        t.index :name, unique: true
+        t.index :remote_id, unique: true
+        t.index :name
+      end
+    else
+      # Add remote_id column if it doesn't exist
+      unless ActiveRecord::Base.connection.column_exists?(:players, :remote_id)
+        add_column :players, :remote_id, :integer
+        add_index :players, :remote_id, unique: true
       end
     end
 

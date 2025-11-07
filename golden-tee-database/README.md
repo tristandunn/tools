@@ -4,17 +4,19 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 
 ## Features
 
-- Scrapes player profiles including name and nickname
+- Scrapes player profiles including name, nickname, and remote ID
 - Extracts match results (wins and losses)
 - Automatically finds or creates players, courses, and sources
 - Stores scores for both players in each match
+- Tracks pegttour.com player IDs for easy reference and duplicate prevention
 - Uses ActiveRecord for easy database management
 
 ## Database Schema
 
 ### Players
 - `id` - Primary key
-- `name` - Player name (unique)
+- `remote_id` - Player ID from pegttour.com (unique, indexed)
+- `name` - Player name
 - `nickname` - Player nickname (optional)
 
 ### Courses
@@ -76,8 +78,11 @@ You can create your own query scripts using the ActiveRecord models:
 ```ruby
 require_relative 'models'
 
-# Find a player
+# Find a player by name
 player = Player.find_by(name: "Andy Haas")
+
+# Find a player by remote_id (pegttour.com ID)
+player = Player.find_by(remote_id: 863)
 
 # Get all matches for a player
 wins = Match.where(player1_id: player.id)
