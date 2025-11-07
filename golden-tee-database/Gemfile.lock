@@ -59,6 +59,9 @@ GEM
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
     minitest (5.26.0)
+    mustermann (3.0.4)
+      ruby2_keywords (~> 0.0.1)
+    nio4r (2.7.5)
     nokogiri (1.18.10-aarch64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.18.10-aarch64-linux-musl)
@@ -81,8 +84,14 @@ GEM
     psych (5.2.6)
       date
       stringio
+    puma (7.1.0)
+      nio4r (~> 2.0)
     racc (1.8.1)
     rack (3.2.4)
+    rack-protection (4.2.1)
+      base64 (>= 0.1.0)
+      logger (>= 1.6.0)
+      rack (>= 3.0.0, < 4)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -113,7 +122,15 @@ GEM
       tsort
     reline (0.6.2)
       io-console (~> 0.5)
+    ruby2_keywords (0.0.5)
     securerandom (0.4.1)
+    sinatra (4.2.1)
+      logger (>= 1.6.0)
+      mustermann (~> 3.0)
+      rack (>= 3.0.0, < 4)
+      rack-protection (= 4.2.1)
+      rack-session (>= 2.0.0, < 3)
+      tilt (~> 2.0)
     sqlite3 (2.8.0-aarch64-linux-gnu)
     sqlite3 (2.8.0-aarch64-linux-musl)
     sqlite3 (2.8.0-arm-linux-gnu)
@@ -129,6 +146,7 @@ GEM
       rake (>= 10.0)
     stringio (3.1.7)
     thor (1.4.0)
+    tilt (2.6.1)
     timeout (0.4.4)
     tsort (0.2.0)
     tzinfo (2.0.6)
@@ -150,6 +168,8 @@ PLATFORMS
 DEPENDENCIES
   activerecord
   nokogiri
+  puma
+  sinatra
   sqlite3
   standalone_migrations
 

@@ -11,6 +11,7 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 - Uses a join table (match_participations) for simple player match queries
 - Tracks pegttour.com player IDs for easy reference and duplicate prevention
 - Uses ActiveRecord for easy database management
+- Web UI for browsing players and their statistics (Sinatra + Tailwind CSS)
 
 ## Database Schema
 
@@ -66,6 +67,17 @@ This will:
 4. Store everything in `database.sqlite3`
 
 **Note:** The scraper automatically uses the statistics page to get the complete match history, not just the first page of results.
+
+### Run the Web UI
+
+```bash
+ruby web.rb
+```
+
+Then visit http://localhost:4567 in your browser to:
+- View all players with their stats (wins, losses, win %, average score)
+- Click on a player to see their detailed statistics
+- Clean, responsive UI built with Tailwind CSS
 
 ### Query the Database
 
@@ -142,6 +154,7 @@ matches = Match.where(source_id: source.id, year: 2025)
 
 - `scraper.rb` - Main scraper script
 - `models.rb` - ActiveRecord models and database schema
+- `web.rb` - Sinatra web UI for browsing players and stats
 - `query_example.rb` - Example queries to demonstrate database usage
 - `Gemfile` - Ruby gem dependencies
 - `database.sqlite3` - SQLite database (created after first run)
@@ -152,3 +165,5 @@ matches = Match.where(source_id: source.id, year: 2025)
 - nokogiri - HTML parsing
 - sqlite3 - Database
 - activerecord - ORM for database management
+- sinatra - Web framework
+- puma - Web server
