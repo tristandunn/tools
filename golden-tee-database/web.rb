@@ -28,8 +28,8 @@ get '/' do
   # Filter out players with no wins
   @players.reject! { |p| p[:wins] == 0 }
 
-  # Sort by win percentage (descending), then by total matches (descending)
-  @players.sort_by! { |p| [-p[:win_pct], -p[:total]] }
+  # Sort by average score (descending/more negative = better), then by total matches (descending)
+  @players.sort_by! { |p| [p[:average] || 0, -p[:total]] }
 
   erb :index
 end
