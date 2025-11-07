@@ -8,6 +8,7 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 - Extracts match results (wins and losses)
 - Automatically finds or creates players, courses, and sources
 - Stores scores for both players in each match
+- Uses a join table (match_participations) for simple player match queries
 - Tracks pegttour.com player IDs for easy reference and duplicate prevention
 - Uses ActiveRecord for easy database management
 
@@ -36,6 +37,15 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 - `course_id` - Course where match was played (foreign key to courses)
 - `source_id` - Tournament/event (foreign key to sources)
 - `year` - Year the match was played
+
+### Match Participations
+- `id` - Primary key
+- `match_id` - The match (foreign key to matches)
+- `player_id` - The player (foreign key to players)
+- `score` - Player's score in this match
+- `won` - Whether the player won (boolean)
+
+**Note:** Each match creates 2 match_participations (one per player), making it easy to query all matches for a specific player without complex joins.
 
 ## Installation
 
@@ -84,9 +94,24 @@ player = Player.find_by(name: "Andy Haas")
 # Find a player by remote_id (pegttour.com ID)
 player = Player.find_by(remote_id: 863)
 
-# Get all matches for a player
-wins = Match.where(player1_id: player.id)
-losses = Match.where(player2_id: player.id)
+# Get all matches for a player (simple!)
+all_matches = player.matches
+all_participations = player.match_participations
+
+# Get wins and losses
+wins = player.wins  # Returns MatchParticipation records where won: true
+losses = player.losses  # Returns MatchParticipation records where won: false
+
+# Count wins and losses
+win_count = player.wins.count
+loss_count = player.losses.count
+
+# Get match details from a participation
+participation = player.wins.first
+match = participation.match
+score = participation.score
+opponent_participation = match.match_participations.where.not(player_id: player.id).first
+opponent = opponent_participation.player
 
 # Find matches at a specific course
 course = Course.find_by(name: "LEXINGTON STABLES")

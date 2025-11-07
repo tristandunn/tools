@@ -106,7 +106,7 @@ class GoldenTeeScraper
           source = Source.find_or_create_by(name: source_name)
 
           # Create match record - player1 is always the winner
-          Match.create!(
+          match = Match.create!(
             player1_id: winner.id,
             player1_score: winner_score,
             player2_id: loser.id,
@@ -114,6 +114,21 @@ class GoldenTeeScraper
             course_id: course.id,
             source_id: source.id,
             year: year
+          )
+
+          # Create match participations for both players
+          MatchParticipation.create!(
+            match_id: match.id,
+            player_id: winner.id,
+            score: winner_score,
+            won: true
+          )
+
+          MatchParticipation.create!(
+            match_id: match.id,
+            player_id: loser.id,
+            score: loser_score,
+            won: false
           )
 
           # Track if this was a win or loss for the current player

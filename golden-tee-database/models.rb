@@ -10,6 +10,17 @@ ActiveRecord::Base.establish_connection(
 class Player < ActiveRecord::Base
   has_many :matches_as_player1, class_name: 'Match', foreign_key: 'player1_id'
   has_many :matches_as_player2, class_name: 'Match', foreign_key: 'player2_id'
+  has_many :match_participations, dependent: :destroy
+  has_many :matches, through: :match_participations
+
+  # Convenient scopes for wins and losses
+  def wins
+    match_participations.where(won: true)
+  end
+
+  def losses
+    match_participations.where(won: false)
+  end
 end
 
 class Course < ActiveRecord::Base
@@ -25,6 +36,12 @@ class Match < ActiveRecord::Base
   belongs_to :player2, class_name: 'Player'
   belongs_to :course
   belongs_to :source
+  has_many :match_participations, dependent: :destroy
+end
+
+class MatchParticipation < ActiveRecord::Base
+  belongs_to :match
+  belongs_to :player
 end
 
 # Create tables if they don't exist
@@ -73,6 +90,18 @@ def setup_schema
         t.index :player2_id
         t.index :course_id
         t.index :source_id
+      end
+    end
+
+    unless ActiveRecord::Base.connection.table_exists?(:match_participations)
+      create_table :match_participations do |t|
+        t.integer :match_id, null: false
+        t.integer :player_id, null: false
+        t.integer :score, null: false
+        t.boolean :won, null: false
+        t.index :match_id
+        t.index :player_id
+        t.index [:player_id, :won]
       end
     end
   end

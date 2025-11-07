@@ -28,25 +28,27 @@ andy = Player.find_by(name: "Andy Haas")
 
 if andy
   puts "\nMatches Won:"
-  Match.where(player1_id: andy.id).limit(3).each do |match|
-    opponent = Player.find(match.player2_id)
-    course = Course.find(match.course_id)
-    source = Source.find(match.source_id)
-    puts "  #{andy.name} (#{match.player1_score}) defeated #{opponent.name} (#{match.player2_score})"
-    puts "    at #{course.name}, #{source.name} #{match.year}"
+  andy.wins.includes(match: [:course, :source]).limit(3).each do |participation|
+    match = participation.match
+    # Find the opponent (the other participation in this match)
+    opponent_participation = match.match_participations.where.not(player_id: andy.id).first
+    opponent = opponent_participation.player
+    puts "  #{andy.name} (#{participation.score}) defeated #{opponent.name} (#{opponent_participation.score})"
+    puts "    at #{match.course.name}, #{match.source.name} #{match.year}"
   end
 
   puts "\nMatches Lost:"
-  Match.where(player2_id: andy.id).limit(3).each do |match|
-    opponent = Player.find(match.player1_id)
-    course = Course.find(match.course_id)
-    source = Source.find(match.source_id)
-    puts "  #{opponent.name} (#{match.player1_score}) defeated #{andy.name} (#{match.player2_score})"
-    puts "    at #{course.name}, #{source.name} #{match.year}"
+  andy.losses.includes(match: [:course, :source]).limit(3).each do |participation|
+    match = participation.match
+    # Find the opponent (the other participation in this match)
+    opponent_participation = match.match_participations.where.not(player_id: andy.id).first
+    opponent = opponent_participation.player
+    puts "  #{opponent.name} (#{opponent_participation.score}) defeated #{andy.name} (#{participation.score})"
+    puts "    at #{match.course.name}, #{match.source.name} #{match.year}"
   end
 
-  # Calculate win/loss record
-  wins = Match.where(player1_id: andy.id).count
-  losses = Match.where(player2_id: andy.id).count
-  puts "\n#{andy.name}'s Record: #{wins} wins - #{losses} losses"
+  # Calculate win/loss record using the simpler queries
+  wins_count = andy.wins.count
+  losses_count = andy.losses.count
+  puts "\n#{andy.name}'s Record: #{wins_count} wins - #{losses_count} losses"
 end
