@@ -102,6 +102,9 @@ __END__
     <thead class="bg-gray-50">
       <tr>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Rank
+        </th>
+        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           ID
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -125,8 +128,11 @@ __END__
       </tr>
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
-      <% @players.each do |stats| %>
+      <% @players.each_with_index do |stats, index| %>
         <tr class="hover:bg-gray-50">
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
+            #<%= index + 1 %>
+          </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             <%= stats[:player].remote_id %>
           </td>
