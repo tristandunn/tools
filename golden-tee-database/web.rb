@@ -108,9 +108,6 @@ __END__
           Rank
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          ID
-        </th>
-        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Player
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -136,14 +133,11 @@ __END__
           <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            <%= stats[:player].remote_id %>
-          </td>
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
               <div>
                 <div class="text-sm font-medium text-gray-900">
-                  <a href="/players/<%= stats[:player].id %>" class="hover:text-blue-600">
+                  <a href="https://pegttour.com/players/<%= stats[:player].remote_id %>" class="hover:text-blue-600" target="_blank">
                     <%= stats[:player].name %>
                   </a>
                 </div>
