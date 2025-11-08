@@ -36,13 +36,19 @@ jobs:
           cd bar-golf
           ruby generate_static.rb
 
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p _site/bar-golf
+          cp bar-golf/index.html _site/bar-golf/
+          touch _site/.nojekyll
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
   deploy:
     environment:
