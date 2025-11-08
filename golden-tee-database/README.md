@@ -39,10 +39,12 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 
 **Note:** Player and score information is stored in the `match_participations` table to avoid duplication.
 
-**Duplicate Prevention:** The system uses smart deduplication with fingerprints and sequences:
-- When scraping multiple players who played each other, it won't create duplicate matches
-- Supports legitimate multiple matches between same players (e.g., king of the hill format where loser's bracket winner faces undefeated player twice)
-- Composite unique index on `[fingerprint, sequence]` ensures data integrity
+**Duplicate Prevention:** The system uses smart deduplication to match website totals exactly while preventing cross-player duplication:
+- Imports all rows from a player's page as-is (including apparent duplicates) to match the website's displayed totals exactly
+- Skips matches when re-scraping a player (prevents re-importing existing data)
+- Skips matches when scraping opponents who already imported that match (prevents cross-player duplication)
+- Uses fingerprints and sequences to handle legitimate multiple matches between same players (e.g., king of the hill, double elimination)
+- Handles website data quality issues (tied matches in both tables, duplicate rows) by importing them as shown
 
 ### Match Participations
 - `id` - Primary key

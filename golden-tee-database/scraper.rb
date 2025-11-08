@@ -106,10 +106,12 @@ class GoldenTeeScraper
           source = Source.find_or_create_by(name: source_name)
 
           # Find or create match using fingerprint (returns [match, is_new])
+          # Pass the current player to avoid re-importing their matches
           match, is_new = Match.find_or_create_match(
             winner.id, winner_score,
             loser.id, loser_score,
-            course.id, source.id, year
+            course.id, source.id, year,
+            current_player_id: player.id
           )
 
           # Only create participations if this is a new match

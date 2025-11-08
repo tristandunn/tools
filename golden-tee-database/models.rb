@@ -104,35 +104,34 @@ class Match < ActiveRecord::Base
   end
 
   # Find or create a match with smart duplicate detection
-  # This handles both:
-  # 1. Duplicate data (same match scraped from multiple player pages)
-  # 2. Legitimate multiple matches (king of the hill, double elimination)
-  # 3. Tied matches (score equality) - these bypass deduplication to match website behavior
-  def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
+  # This handles:
+  # 1. Re-scraping: Skip matches the current player already participated in
+  # 2. Cross-player scraping: Skip matches where the opponent already imported this match
+  # 3. Within-scrape duplicates: Import all rows as-is to match website totals exactly
+  def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year, current_player_id:)
     fingerprint = generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
-    player_ids = [player1_id, player2_id].sort
 
-    # Skip deduplication for tied matches (same score for both players)
-    # The website often has bad data where 0-0 matches appear in both wins and losses tables
-    # To match the website's totals, we create separate entries for these
-    unless player1_score == player2_score
-      # Find all matches with this fingerprint
-      existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
+    # Find all existing matches with this fingerprint
+    existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
 
-      # Check each existing match to see if it already has both these players
-      existing_matches.each do |match|
-        participant_ids = match.match_participations.pluck(:player_id).sort
-        if participant_ids == player_ids
-          # This exact match (same players) already exists - it's a duplicate
+    # Check if the current player already participated in any of these matches
+    existing_matches.each do |match|
+      participant_ids = match.match_participations.pluck(:player_id)
+      if participant_ids.include?(current_player_id)
+        # Current player already has this match (from a previous scrape or opponent's page)
+        # Check if they have the same won/lost status
+        current_player_participation = match.match_participations.find { |p| p.player_id == current_player_id }
+        expected_won = (player1_id == current_player_id) ? true : false
+
+        if current_player_participation.won == expected_won
+          # Same match with same outcome - skip it
           return [match, false]
         end
       end
     end
 
-    # Either no matches with this fingerprint, or existing matches have different players,
-    # or this is a tied match (which we don't deduplicate)
-    # This is a legitimate new match (could be second match between same players)
-    existing_matches = Match.where(fingerprint: fingerprint)
+    # Either no existing matches, or current player isn't in them yet
+    # Create a new match (this handles within-scrape duplicates and legitimate multiple matches)
     next_sequence = existing_matches.any? ? existing_matches.maximum(:sequence) + 1 : 1
 
     match = Match.create!(
