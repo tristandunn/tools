@@ -105,33 +105,33 @@ class Match < ActiveRecord::Base
 
   # Find or create a match with smart duplicate detection
   # This handles:
-  # 1. Re-scraping: Skip matches the current player already participated in
-  # 2. Cross-player scraping: Skip matches where the opponent already imported this match
-  # 3. Within-scrape duplicates: Import all rows as-is to match website totals exactly
+  # 1. Re-scraping: Skip matches where BOTH players already participated together
+  # 2. Within-scrape duplicates: Import all rows including ties that appear in both tables
   def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year, current_player_id:)
     fingerprint = generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
+    player_ids = [player1_id, player2_id].sort
 
     # Find all existing matches with this fingerprint
     existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
 
-    # Check if the current player already participated in any of these matches
+    # Check if BOTH players already participated together with the same winner
     existing_matches.each do |match|
-      participant_ids = match.match_participations.pluck(:player_id)
-      if participant_ids.include?(current_player_id)
-        # Current player already has this match (from a previous scrape or opponent's page)
-        # Check if they have the same won/lost status
-        current_player_participation = match.match_participations.find { |p| p.player_id == current_player_id }
-        expected_won = (player1_id == current_player_id) ? true : false
+      participant_ids = match.match_participations.pluck(:player_id).sort
+      if participant_ids == player_ids
+        # Both players are in this match - check if the winner is the same
+        existing_winner_id = match.match_participations.find { |p| p.won == true }&.player_id
+        current_winner_id = player1_id  # player1 is always the winner in our data structure
 
-        if current_player_participation.won == expected_won
-          # Same match with same outcome - skip it
+        if existing_winner_id == current_winner_id
+          # Same match with same winner - skip it (prevents duplicates and re-scraping)
           return [match, false]
         end
+        # Different winner - this is a tied match appearing in both tables, create new match
       end
     end
 
-    # Either no existing matches, or current player isn't in them yet
-    # Create a new match (this handles within-scrape duplicates and legitimate multiple matches)
+    # Either no existing matches, or these two players haven't played together yet
+    # Create a new match (this allows tied matches to create multiple entries)
     next_sequence = existing_matches.any? ? existing_matches.maximum(:sequence) + 1 : 1
 
     match = Match.create!(
