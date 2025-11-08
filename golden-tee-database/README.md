@@ -88,9 +88,13 @@ ruby web.rb
 ```
 
 Then visit http://localhost:4567 in your browser to:
-- View all players with their stats (wins, losses, win %, average score)
+- View all players sorted by confidence-weighted rating
+- See stats including wins, losses, win %, rating, and average score
 - Click on a player to see their detailed statistics
 - Clean, responsive UI built with Tailwind CSS
+
+**About the Rating System:**
+The player rating uses a Bayesian average to account for sample size. A player with -25 average over 100 games will rate higher than a player with -26 over 2 games. The formula pulls players with fewer games toward the overall baseline until they have enough matches (default: 25) for their true average to dominate the rating.
 
 ### Query the Database
 
@@ -152,6 +156,14 @@ player.match_participations.lost    # Participations where won: false
 # Calculate scoring averages
 all_time_avg = player.average           # All-time average score
 recent_avg = player.average(2024)       # Average since 2024
+
+# Calculate confidence-weighted rating (Bayesian average)
+# Players with fewer games are pulled toward the baseline average
+rating = player.rating                  # Default confidence: 25 games
+rating = player.rating(confidence: 50)  # Custom confidence weight
+
+# Get the baseline average across all players
+baseline = Player.baseline_average
 # Can also pass Date/Time objects: player.average(3.years.ago)
 
 # Find matches at a specific course

@@ -7,6 +7,9 @@ set :bind, '0.0.0.0'
 
 # Home page - list all players
 get '/' do
+  # Reset baseline cache to ensure fresh calculation with current data
+  Player.reset_baseline_cache
+
   # Get all players with their stats
   @players = Player.all.map do |player|
     wins = player.matches.won.count
@@ -14,6 +17,7 @@ get '/' do
     total = wins + losses
     win_pct = total > 0 ? ((wins.to_f / total) * 100).round(1) : 0
     avg = player.average
+    rating = player.rating
 
     {
       player: player,
@@ -21,7 +25,8 @@ get '/' do
       losses: losses,
       total: total,
       win_pct: win_pct,
-      average: avg
+      average: avg,
+      rating: rating
     }
   end
 
@@ -31,8 +36,8 @@ get '/' do
   # Filter out players without nicknames (means we haven't scraped their full stats)
   @players.reject! { |p| p[:player].nickname.nil? || p[:player].nickname.empty? }
 
-  # Sort by average score (descending/more negative = better), then by total matches (descending)
-  @players.sort_by! { |p| [p[:average] || 0, -p[:total]] }
+  # Sort by rating (descending/more negative = better)
+  @players.sort_by! { |p| p[:rating] || 0 }
 
   erb :index
 end
@@ -45,6 +50,7 @@ get '/players/:id' do
   @total = @wins + @losses
   @win_pct = @total > 0 ? ((@wins.to_f / @total) * 100).round(1) : 0
   @average = @player.average
+  @rating = @player.rating
 
   erb :player
 end
@@ -108,6 +114,9 @@ __END__
           Win %
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Rating
+        </th>
+        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Avg Score
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -149,7 +158,10 @@ __END__
               <%= stats[:win_pct] %>%
             </span>
           </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+            <%= stats[:rating] ? stats[:rating].round(2) : 'N/A' %>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             <%= stats[:average] || 'N/A' %>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -170,7 +182,7 @@ __END__
   <% end %>
 </div>
 
-<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5 mb-8">
   <div class="bg-white overflow-hidden shadow rounded-lg">
     <div class="px-4 py-5 sm:p-6">
       <dt class="text-sm font-medium text-gray-500 truncate">Record</dt>
@@ -184,6 +196,13 @@ __END__
     <div class="px-4 py-5 sm:p-6">
       <dt class="text-sm font-medium text-gray-500 truncate">Win Percentage</dt>
       <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= @win_pct %>%</dd>
+    </div>
+  </div>
+
+  <div class="bg-white overflow-hidden shadow rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <dt class="text-sm font-medium text-gray-500 truncate">Rating</dt>
+      <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= @rating ? @rating.round(2) : 'N/A' %></dd>
     </div>
   </div>
 

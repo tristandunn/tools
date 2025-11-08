@@ -45,6 +45,34 @@ class Player < ActiveRecord::Base
 
     (scores.sum.to_f / scores.length).round(2)
   end
+
+  # Calculate confidence-weighted rating using Bayesian average
+  # Players with fewer games are pulled toward the baseline average
+  # confidence: number of games needed to fully trust the player's average (default 25)
+  def rating(confidence: 25)
+    avg = average
+    return nil if avg.nil?
+
+    game_count = match_participations.count
+    baseline = Player.baseline_average
+
+    # Bayesian average: (C * baseline + n * avg) / (C + n)
+    ((confidence * baseline) + (game_count * avg)) / (confidence + game_count).to_f
+  end
+
+  # Calculate the baseline average score across all players
+  def self.baseline_average
+    # Cache the baseline to avoid recalculating on every call
+    @baseline_average ||= begin
+      all_scores = MatchParticipation.pluck(:score)
+      all_scores.empty? ? 0.0 : (all_scores.sum.to_f / all_scores.length)
+    end
+  end
+
+  # Reset the cached baseline (call after adding new data)
+  def self.reset_baseline_cache
+    @baseline_average = nil
+  end
 end
 
 class Course < ActiveRecord::Base
