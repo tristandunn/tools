@@ -19,6 +19,7 @@ get '/' do
     avg = player.average
     rating = player.rating
     elo = player.elo_rating || 1500.0
+    latest_year = player.matches.maximum(:year) || 1980
 
     {
       player: player,
@@ -28,7 +29,8 @@ get '/' do
       win_pct: win_pct,
       average: avg,
       rating: rating,
-      elo: elo
+      elo: elo,
+      latest_year: latest_year
     }
   end
 
@@ -94,6 +96,7 @@ __END__
       const playerName = document.getElementById('player-name').value.toLowerCase().trim();
       const minMatches = parseInt(document.getElementById('min-matches').value) || 0;
       const minAverage = parseFloat(document.getElementById('min-average').value) || -999;
+      const minYear = parseInt(document.getElementById('min-year').value) || 1980;
       const rows = document.querySelectorAll('tbody tr');
       let visibleCount = 0;
 
@@ -101,12 +104,14 @@ __END__
         const name = row.dataset.name || '';
         const total = parseInt(row.dataset.total) || 0;
         const average = parseFloat(row.dataset.average) || -999;
+        const latestYear = parseInt(row.dataset.latestYear) || 1980;
 
         // Check if name matches (if search term provided)
         const nameMatches = !playerName || name.includes(playerName);
 
         // In golf, lower scores are better, so <= for average (e.g., -30 is better than -20)
-        if (nameMatches && total >= minMatches && average <= minAverage) {
+        // Check if player has played in minYear or later
+        if (nameMatches && total >= minMatches && average <= minAverage && latestYear >= minYear) {
           row.style.display = '';
           visibleCount++;
         } else {
@@ -123,6 +128,7 @@ __END__
       const playerNameInput = document.getElementById('player-name');
       const minMatchesInput = document.getElementById('min-matches');
       const minAverageInput = document.getElementById('min-average');
+      const minYearInput = document.getElementById('min-year');
 
       if (playerNameInput) {
         playerNameInput.addEventListener('input', filterTable);
@@ -134,6 +140,10 @@ __END__
 
       if (minAverageInput) {
         minAverageInput.addEventListener('input', filterTable);
+      }
+
+      if (minYearInput) {
+        minYearInput.addEventListener('input', filterTable);
       }
 
       // Filter on page load with default values
@@ -182,6 +192,19 @@ __END__
           class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-16 sm:w-24"
         />
       </div>
+      <div class="flex items-center gap-2">
+        <label for="min-year" class="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+          Since Year:
+        </label>
+        <input
+          type="number"
+          id="min-year"
+          value="2020"
+          min="1980"
+          max="2099"
+          class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-20 sm:w-24"
+        />
+      </div>
     </div>
     <div class="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
       <span id="visible-count"><%= @players.length %></span> of <%= @players.length %> players
@@ -218,7 +241,7 @@ __END__
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       <% @players.each_with_index do |stats, index| %>
-        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>">
+        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>" data-latest-year="<%= stats[:latest_year] %>">
           <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>

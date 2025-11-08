@@ -59,6 +59,19 @@
           class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-16 sm:w-24"
         />
       </div>
+      <div class="flex items-center gap-2">
+        <label for="min-year" class="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+          Since Year:
+        </label>
+        <input
+          type="number"
+          id="min-year"
+          value="2020"
+          min="1980"
+          max="2099"
+          class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-20 sm:w-24"
+        />
+      </div>
     </div>
     <div class="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
       <span id="visible-count">2</span> of 2 players
@@ -95,7 +108,7 @@
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       
-        <tr class="hover:bg-gray-50" data-total="501" data-average="-26.79" data-name="andy haas">
+        <tr class="hover:bg-gray-50" data-total="501" data-average="-26.79" data-name="andy haas" data-latest-year="2025">
           <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
             #1
           </td>
@@ -138,7 +151,7 @@
           </td>
         </tr>
       
-        <tr class="hover:bg-gray-50" data-total="113" data-average="-24.9" data-name="kirk stimpert">
+        <tr class="hover:bg-gray-50" data-total="113" data-average="-24.9" data-name="kirk stimpert" data-latest-year="2025">
           <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
             #2
           </td>
@@ -195,6 +208,7 @@
       const playerName = document.getElementById('player-name').value.toLowerCase().trim();
       const minMatches = parseInt(document.getElementById('min-matches').value) || 0;
       const minAverage = parseFloat(document.getElementById('min-average').value) || -999;
+      const minYear = parseInt(document.getElementById('min-year').value) || 1980;
       const rows = document.querySelectorAll('tbody tr');
       let visibleCount = 0;
 
@@ -202,12 +216,14 @@
         const name = row.dataset.name || '';
         const total = parseInt(row.dataset.total) || 0;
         const average = parseFloat(row.dataset.average) || -999;
+        const latestYear = parseInt(row.dataset.latestYear) || 1980;
 
         // Check if name matches (if search term provided)
         const nameMatches = !playerName || name.includes(playerName);
 
         // In golf, lower scores are better, so <= for average (e.g., -30 is better than -20)
-        if (nameMatches && total >= minMatches && average <= minAverage) {
+        // Check if player has played in minYear or later
+        if (nameMatches && total >= minMatches && average <= minAverage && latestYear >= minYear) {
           row.style.display = '';
           visibleCount++;
         } else {
@@ -224,6 +240,7 @@
       const playerNameInput = document.getElementById('player-name');
       const minMatchesInput = document.getElementById('min-matches');
       const minAverageInput = document.getElementById('min-average');
+      const minYearInput = document.getElementById('min-year');
 
       if (playerNameInput) {
         playerNameInput.addEventListener('input', filterTable);
@@ -235,6 +252,10 @@
 
       if (minAverageInput) {
         minAverageInput.addEventListener('input', filterTable);
+      }
+
+      if (minYearInput) {
+        minYearInput.addEventListener('input', filterTable);
       }
 
       // Filter on page load with default values
