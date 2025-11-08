@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bar Golf Database</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen">
+    <nav class="bg-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div class="flex justify-center h-16">
+          <div class="flex items-center">
+            <h1 class="text-lg sm:text-xl font-bold text-gray-900">
+              🏌️ Bar Golf Database
+            </h1>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+      <div class="mb-4 bg-white shadow-sm rounded-lg p-3 sm:p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+      <div class="flex items-center gap-2">
+        <label for="player-name" class="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+          Player:
+        </label>
+        <input
+          type="text"
+          id="player-name"
+          placeholder="Search..."
+          class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-32 sm:w-48"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="min-matches" class="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+          Min Matches:
+        </label>
+        <input
+          type="number"
+          id="min-matches"
+          value="10"
+          min="0"
+          class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-16 sm:w-24"
+        />
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="min-average" class="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+          Min Avg:
+        </label>
+        <input
+          type="number"
+          id="min-average"
+          value="-15"
+          step="1"
+          class="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm w-16 sm:w-24"
+        />
+      </div>
+    </div>
+    <div class="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
+      <span id="visible-count">2</span> of 2 players
+    </div>
+  </div>
+</div>
+
+<div class="bg-white shadow-sm rounded-lg overflow-x-auto">
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Rank
+        </th>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Player
+        </th>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Record
+        </th>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Win %
+        </th>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          ELO
+        </th>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Avg
+        </th>
+        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Matches
+        </th>
+      </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+      
+        <tr class="hover:bg-gray-50" data-total="501" data-average="-26.79" data-name="andy haas">
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
+            #1
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div>
+                <div class="text-xs sm:text-sm font-medium text-gray-900">
+                  <a href="https://pegttour.com/players/863" class="hover:text-blue-600" target="_blank">
+                    Andy Haas
+                  </a>
+                </div>
+                
+                  <div class="text-xs sm:text-sm text-gray-500">
+                    "ship it!"
+                  </div>
+                
+              </div>
+            </div>
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
+            <div class="text-xs sm:text-sm text-gray-900">
+              <span class="text-green-600 font-semibold">374W</span>
+              -
+              <span class="text-red-600 font-semibold">127L</span>
+            </div>
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
+            <span class="px-1.5 sm:px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+              74.7%
+            </span>
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-900">
+            1668.36
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+            -26.79
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+            501
+          </td>
+        </tr>
+      
+        <tr class="hover:bg-gray-50" data-total="113" data-average="-24.9" data-name="kirk stimpert">
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
+            #2
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div>
+                <div class="text-xs sm:text-sm font-medium text-gray-900">
+                  <a href="https://pegttour.com/players/1707" class="hover:text-blue-600" target="_blank">
+                    Kirk Stimpert
+                  </a>
+                </div>
+                
+                  <div class="text-xs sm:text-sm text-gray-500">
+                    ".'STIMPJUICE'."
+                  </div>
+                
+              </div>
+            </div>
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
+            <div class="text-xs sm:text-sm text-gray-900">
+              <span class="text-green-600 font-semibold">74W</span>
+              -
+              <span class="text-red-600 font-semibold">39L</span>
+            </div>
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
+            <span class="px-1.5 sm:px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+              65.5%
+            </span>
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-900">
+            1490.58
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+            -24.9
+          </td>
+          <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+            113
+          </td>
+        </tr>
+      
+    </tbody>
+  </table>
+</div>
+
+
+    </main>
+  </div>
+
+  <script>
+    // Filter functionality
+    function filterTable() {
+      const playerName = document.getElementById('player-name').value.toLowerCase().trim();
+      const minMatches = parseInt(document.getElementById('min-matches').value) || 0;
+      const minAverage = parseFloat(document.getElementById('min-average').value) || -999;
+      const rows = document.querySelectorAll('tbody tr');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const name = row.dataset.name || '';
+        const total = parseInt(row.dataset.total) || 0;
+        const average = parseFloat(row.dataset.average) || -999;
+
+        // Check if name matches (if search term provided)
+        const nameMatches = !playerName || name.includes(playerName);
+
+        // In golf, lower scores are better, so <= for average (e.g., -30 is better than -20)
+        if (nameMatches && total >= minMatches && average <= minAverage) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // Update visible count
+      document.getElementById('visible-count').textContent = visibleCount;
+    }
+
+    // Add event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      const playerNameInput = document.getElementById('player-name');
+      const minMatchesInput = document.getElementById('min-matches');
+      const minAverageInput = document.getElementById('min-average');
+
+      if (playerNameInput) {
+        playerNameInput.addEventListener('input', filterTable);
+      }
+
+      if (minMatchesInput) {
+        minMatchesInput.addEventListener('input', filterTable);
+      }
+
+      if (minAverageInput) {
+        minAverageInput.addEventListener('input', filterTable);
+      }
+
+      // Filter on page load with default values
+      filterTable();
+    });
+  </script>
+</body>
+</html>
+
