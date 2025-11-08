@@ -38,8 +38,8 @@ get '/' do
   # Filter out players without nicknames (means we haven't scraped their full stats)
   @players.reject! { |p| p[:player].nickname.nil? || p[:player].nickname.empty? }
 
-  # Sort by ELO rating (ascending - lower/more negative scores are better in Golden Tee)
-  @players.sort_by! { |p| p[:elo] }
+  # Sort by ELO rating (descending - higher ELO = better player)
+  @players.sort_by! { |p| -p[:elo] }
 
   erb :index
 end
@@ -168,7 +168,7 @@ __END__
             </span>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-            <%= stats[:elo].round(2) %>
+            <%= sprintf("%.2f", stats[:elo]) %>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             <%= stats[:average] || 'N/A' %>
@@ -211,7 +211,7 @@ __END__
   <div class="bg-white overflow-hidden shadow rounded-lg">
     <div class="px-4 py-5 sm:p-6">
       <dt class="text-sm font-medium text-gray-500 truncate">ELO Rating</dt>
-      <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= @elo.round(2) %></dd>
+      <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= sprintf("%.2f", @elo) %></dd>
     </div>
   </div>
 

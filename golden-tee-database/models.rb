@@ -140,12 +140,12 @@ class Player < ActiveRecord::Base
 
     puts "ELO ratings calculated successfully!"
 
-    # Show top 10 players by ELO
-    top_players = Player.order(elo_rating: :asc).limit(10)
+    # Show top 10 players by ELO (highest rating = best)
+    top_players = Player.order(elo_rating: :desc).limit(10)
     puts "\nTop 10 Players by ELO Rating:"
     puts "=" * 60
     top_players.each_with_index do |player, index|
-      puts "#{index + 1}. #{player.name} (#{player.nickname}) - #{player.elo_rating.round(2)}"
+      puts "#{index + 1}. #{player.name} (#{player.nickname}) - #{sprintf("%.2f", player.elo_rating)}"
     end
     puts "=" * 60
   end
