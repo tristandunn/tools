@@ -26,16 +26,6 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: false
 
-      - name: Install dependencies
-        run: |
-          cd bar-golf
-          gem install sinatra activerecord sqlite3 nokogiri
-
-      - name: Generate static HTML
-        run: |
-          cd bar-golf
-          ruby generate_static.rb
-
       - name: Prepare deployment directory
         run: |
           mkdir -p _site/bar-golf
