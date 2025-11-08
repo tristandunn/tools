@@ -207,7 +207,7 @@ __END__
       </div>
     </div>
     <div class="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
-      <span id="visible-count"><%= @players.length %></span> of <%= @players.length %> players
+      <span id="visible-count"><%= @players.length %></span> of <%= Player.count %> players
     </div>
   </div>
 </div>
