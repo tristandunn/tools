@@ -73,6 +73,82 @@ class Player < ActiveRecord::Base
   def self.reset_baseline_cache
     @baseline_average = nil
   end
+
+  # ELO Rating System
+  # Calculate expected probability of winning against an opponent
+  def elo_expected_score(opponent_rating, player_rating = self.elo_rating || 1500.0)
+    1.0 / (1.0 + 10.0**((opponent_rating - player_rating) / 400.0))
+  end
+
+  # Calculate new ELO rating after a match
+  # actual_score: 1 for win, 0 for loss
+  # opponent_rating: the opponent's current ELO rating
+  # k_factor: how much ratings change per game (default 32)
+  def calculate_elo_change(actual_score, opponent_rating, k_factor = 32)
+    expected = elo_expected_score(opponent_rating)
+    k_factor * (actual_score - expected)
+  end
+
+  # Recalculate ELO rating for all players based on match history
+  # This processes all matches in chronological order (by year, then match ID)
+  def self.recalculate_all_elo_ratings(k_factor = 32)
+    # Reset all players to default rating
+    Player.update_all(elo_rating: 1500.0)
+
+    # Get all matches ordered by year and ID (chronological)
+    matches = Match.includes(:match_participations).order(:year, :id)
+
+    puts "Calculating ELO ratings for #{matches.count} matches..."
+
+    matches.each_with_index do |match, index|
+      participations = match.match_participations.to_a
+      next unless participations.length == 2
+
+      # Get the two players
+      winner_participation = participations.find { |p| p.won }
+      loser_participation = participations.find { |p| !p.won }
+
+      next unless winner_participation && loser_participation
+
+      winner = winner_participation.player
+      loser = loser_participation.player
+
+      # Get current ratings (reload from DB to get latest values)
+      winner.reload
+      loser.reload
+
+      winner_rating = winner.elo_rating || 1500.0
+      loser_rating = loser.elo_rating || 1500.0
+
+      # Calculate expected scores
+      winner_expected = 1.0 / (1.0 + 10.0**((loser_rating - winner_rating) / 400.0))
+      loser_expected = 1.0 / (1.0 + 10.0**((winner_rating - loser_rating) / 400.0))
+
+      # Calculate new ratings
+      winner_new_rating = winner_rating + k_factor * (1.0 - winner_expected)
+      loser_new_rating = loser_rating + k_factor * (0.0 - loser_expected)
+
+      # Update ratings
+      winner.update_column(:elo_rating, winner_new_rating)
+      loser.update_column(:elo_rating, loser_new_rating)
+
+      # Progress indicator
+      if (index + 1) % 100 == 0
+        puts "  Processed #{index + 1} matches..."
+      end
+    end
+
+    puts "ELO ratings calculated successfully!"
+
+    # Show top 10 players by ELO
+    top_players = Player.order(elo_rating: :asc).limit(10)
+    puts "\nTop 10 Players by ELO Rating:"
+    puts "=" * 60
+    top_players.each_with_index do |player, index|
+      puts "#{index + 1}. #{player.name} (#{player.nickname}) - #{player.elo_rating.round(2)}"
+    end
+    puts "=" * 60
+  end
 end
 
 class Course < ActiveRecord::Base
@@ -168,6 +244,7 @@ def setup_schema
         t.integer :remote_id
         t.string :name, null: false
         t.string :nickname
+        t.float :elo_rating, default: 1500.0
         t.index :remote_id, unique: true
         t.index :name
       end
@@ -176,6 +253,11 @@ def setup_schema
       unless ActiveRecord::Base.connection.column_exists?(:players, :remote_id)
         add_column :players, :remote_id, :integer
         add_index :players, :remote_id, unique: true
+      end
+
+      # Add elo_rating column if it doesn't exist
+      unless ActiveRecord::Base.connection.column_exists?(:players, :elo_rating)
+        add_column :players, :elo_rating, :float, default: 1500.0
       end
     end
 
@@ -215,7 +297,15 @@ def setup_schema
       # Add sequence column if it doesn't exist
       unless ActiveRecord::Base.connection.column_exists?(:matches, :sequence)
         add_column :matches, :sequence, :integer, null: false, default: 1
-        add_index :matches, [:fingerprint, :sequence], unique: true
+      end
+
+      # Add unique index on fingerprint + sequence if it doesn't exist
+      begin
+        unless ActiveRecord::Base.connection.index_exists?(:matches, [:fingerprint, :sequence])
+          add_index :matches, [:fingerprint, :sequence], unique: true
+        end
+      rescue ActiveRecord::RecordNotUnique, SQLite3::ConstraintException
+        # Index already exists or data violates constraint - ignore
       end
     end
 

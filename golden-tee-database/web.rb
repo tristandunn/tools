@@ -18,6 +18,7 @@ get '/' do
     win_pct = total > 0 ? ((wins.to_f / total) * 100).round(1) : 0
     avg = player.average
     rating = player.rating
+    elo = player.elo_rating || 1500.0
 
     {
       player: player,
@@ -26,7 +27,8 @@ get '/' do
       total: total,
       win_pct: win_pct,
       average: avg,
-      rating: rating
+      rating: rating,
+      elo: elo
     }
   end
 
@@ -36,8 +38,8 @@ get '/' do
   # Filter out players without nicknames (means we haven't scraped their full stats)
   @players.reject! { |p| p[:player].nickname.nil? || p[:player].nickname.empty? }
 
-  # Sort by rating (descending/more negative = better)
-  @players.sort_by! { |p| p[:rating] || 0 }
+  # Sort by ELO rating (ascending - lower/more negative scores are better in Golden Tee)
+  @players.sort_by! { |p| p[:elo] }
 
   erb :index
 end
@@ -51,6 +53,7 @@ get '/players/:id' do
   @win_pct = @total > 0 ? ((@wins.to_f / @total) * 100).round(1) : 0
   @average = @player.average
   @rating = @player.rating
+  @elo = @player.elo_rating || 1500.0
 
   erb :player
 end
@@ -117,7 +120,7 @@ __END__
           Win %
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Rating
+          ELO Rating
         </th>
         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Avg Score
@@ -165,7 +168,7 @@ __END__
             </span>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-            <%= stats[:rating] ? stats[:rating].round(2) : 'N/A' %>
+            <%= stats[:elo].round(2) %>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             <%= stats[:average] || 'N/A' %>
@@ -207,8 +210,8 @@ __END__
 
   <div class="bg-white overflow-hidden shadow rounded-lg">
     <div class="px-4 py-5 sm:p-6">
-      <dt class="text-sm font-medium text-gray-500 truncate">Rating</dt>
-      <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= @rating ? @rating.round(2) : 'N/A' %></dd>
+      <dt class="text-sm font-medium text-gray-500 truncate">ELO Rating</dt>
+      <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= @elo.round(2) %></dd>
     </div>
   </div>
 
