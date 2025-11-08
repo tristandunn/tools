@@ -68,13 +68,8 @@ layout_with_content = layout_template.gsub('<%= yield %>', index_html)
 # Render the layout
 layout_html = ERB.new(layout_with_content, trim_mode: '-').result(binding)
 
-# Create output directory if it doesn't exist
-docs_dir = File.expand_path('../docs', __dir__)
-output_dir = File.join(docs_dir, 'bar-golf')
-FileUtils.mkdir_p(output_dir)
-
-# Save the HTML to the output directory as index.html
-output_file = File.join(output_dir, 'index.html')
+# Save the HTML to the bar-golf directory as index.html
+output_file = File.join(__dir__, 'index.html')
 File.write(output_file, layout_html)
 
 puts "Static HTML generated successfully!"
