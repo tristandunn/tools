@@ -34,9 +34,15 @@ A Ruby web scraper that extracts player data and match results from pegttour.com
 - `course_id` - Course where match was played (foreign key to courses)
 - `source_id` - Tournament/event (foreign key to sources)
 - `year` - Year the match was played
-- `fingerprint` - Unique hash of match data (prevents duplicates, indexed)
+- `fingerprint` - Hash of match data (players, scores, course, source, year)
+- `sequence` - Sequence number for matches with identical fingerprints (default: 1)
 
-**Note:** Player and score information is stored in the `match_participations` table to avoid duplication. The fingerprint ensures that scraping multiple players who played each other doesn't create duplicate match records.
+**Note:** Player and score information is stored in the `match_participations` table to avoid duplication.
+
+**Duplicate Prevention:** The system uses smart deduplication with fingerprints and sequences:
+- When scraping multiple players who played each other, it won't create duplicate matches
+- Supports legitimate multiple matches between same players (e.g., king of the hill format where loser's bracket winner faces undefeated player twice)
+- Composite unique index on `[fingerprint, sequence]` ensures data integrity
 
 ### Match Participations
 - `id` - Primary key

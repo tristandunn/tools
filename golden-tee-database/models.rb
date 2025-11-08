@@ -103,20 +103,36 @@ class Match < ActiveRecord::Base
     Digest::SHA256.hexdigest(fingerprint_data)
   end
 
-  # Find or create a match with duplicate detection
+  # Find or create a match with smart duplicate detection
+  # This handles both:
+  # 1. Duplicate data (same match scraped from multiple player pages)
+  # 2. Legitimate multiple matches (king of the hill, double elimination)
   def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
     fingerprint = generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
+    player_ids = [player1_id, player2_id].sort
 
-    # Try to find existing match by fingerprint
-    existing_match = Match.find_by(fingerprint: fingerprint)
-    return [existing_match, false] if existing_match
+    # Find all matches with this fingerprint
+    existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
 
-    # Create new match if it doesn't exist
+    # Check each existing match to see if it already has both these players
+    existing_matches.each do |match|
+      participant_ids = match.match_participations.pluck(:player_id).sort
+      if participant_ids == player_ids
+        # This exact match (same players) already exists - it's a duplicate
+        return [match, false]
+      end
+    end
+
+    # Either no matches with this fingerprint, or existing matches have different players
+    # This is a legitimate new match (could be second match between same players)
+    next_sequence = existing_matches.any? ? existing_matches.maximum(:sequence) + 1 : 1
+
     match = Match.create!(
       course_id: course_id,
       source_id: source_id,
       year: year,
-      fingerprint: fingerprint
+      fingerprint: fingerprint,
+      sequence: next_sequence
     )
 
     [match, true]
@@ -171,15 +187,23 @@ def setup_schema
         t.integer :source_id, null: false
         t.integer :year, null: false
         t.string :fingerprint, null: false
+        t.integer :sequence, null: false, default: 1
         t.index :course_id
         t.index :source_id
-        t.index :fingerprint, unique: true
+        t.index :fingerprint
+        t.index [:fingerprint, :sequence], unique: true
       end
     else
       # Add fingerprint column if it doesn't exist
       unless ActiveRecord::Base.connection.column_exists?(:matches, :fingerprint)
         add_column :matches, :fingerprint, :string, null: false, default: ''
-        add_index :matches, :fingerprint, unique: true
+        add_index :matches, :fingerprint
+      end
+
+      # Add sequence column if it doesn't exist
+      unless ActiveRecord::Base.connection.column_exists?(:matches, :sequence)
+        add_column :matches, :sequence, :integer, null: false, default: 1
+        add_index :matches, [:fingerprint, :sequence], unique: true
       end
     end
 
