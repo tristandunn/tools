@@ -90,13 +90,18 @@ class GoldenTeeScraper
           loser_remote_id = extract_remote_id(cells[2])
           loser_score = parse_score(cells[3].text)
           course_name = cells[4].text.strip
+          course_name = "Unknown" if course_name.empty?
           location = cells[5].text.strip
 
           # Parse location to extract source and year
           source_name, year = parse_location(location)
 
+          # Use defaults for missing data
+          source_name = "Unknown" if source_name.nil? || source_name.empty?
+          year = 1980 if year.nil?
+
           # Skip if we couldn't parse essential data
-          next unless winner_score && loser_score && year
+          next unless winner_score && loser_score
 
           # Find or create players (use remote_id if available, otherwise fall back to name)
           winner = find_or_create_player(winner_name, winner_remote_id)
