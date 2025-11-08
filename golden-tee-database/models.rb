@@ -107,15 +107,13 @@ class Match < ActiveRecord::Base
   # This handles:
   # 1. First scrape: Import all rows as-is to match website totals exactly (including duplicates)
   # 2. Re-scraping: Skip matches where BOTH players already participated together with same winner
-  def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year, current_player_id:)
+  def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year, current_player_id:, is_first_scrape:)
     fingerprint = generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
     player_ids = [player1_id, player2_id].sort
 
-    # Check if current player has any existing matches - if not, this is their first scrape
     # On first scrape, import everything as-is (no deduplication)
-    current_player_match_count = MatchParticipation.where(player_id: current_player_id).count
-
-    if current_player_match_count > 0
+    # This ensures we match the website's totals exactly, including apparent duplicates
+    unless is_first_scrape
       # This is a re-scrape - check for duplicates
       existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
 

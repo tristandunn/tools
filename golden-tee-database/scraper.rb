@@ -65,6 +65,9 @@ class GoldenTeeScraper
     won_count = 0
     lost_count = 0
 
+    # Check if this is a first scrape (player has no existing matches)
+    is_first_scrape = player.match_participations.count == 0
+
     # Find all tables with match data (headers include Winner and Loser)
     @doc.css('table').each do |table|
       headers = table.css('thead th').map { |th| th.text.strip }
@@ -106,12 +109,13 @@ class GoldenTeeScraper
           source = Source.find_or_create_by(name: source_name)
 
           # Find or create match using fingerprint (returns [match, is_new])
-          # Pass the current player to avoid re-importing their matches
+          # Pass the current player and first_scrape flag to control deduplication
           match, is_new = Match.find_or_create_match(
             winner.id, winner_score,
             loser.id, loser_score,
             course.id, source.id, year,
-            current_player_id: player.id
+            current_player_id: player.id,
+            is_first_scrape: is_first_scrape
           )
 
           # Only create participations if this is a new match
