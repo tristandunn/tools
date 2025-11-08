@@ -94,12 +94,15 @@ __END__
     // Filter functionality
     function filterTable() {
       const minMatches = parseInt(document.getElementById('min-matches').value) || 0;
+      const minAverage = parseFloat(document.getElementById('min-average').value) || -999;
       const rows = document.querySelectorAll('tbody tr');
       let visibleCount = 0;
 
       rows.forEach(row => {
         const total = parseInt(row.dataset.total) || 0;
-        if (total >= minMatches) {
+        const average = parseFloat(row.dataset.average) || -999;
+
+        if (total >= minMatches && average >= minAverage) {
           row.style.display = '';
           visibleCount++;
         } else {
@@ -111,14 +114,21 @@ __END__
       document.getElementById('visible-count').textContent = visibleCount;
     }
 
-    // Add event listener
+    // Add event listeners
     document.addEventListener('DOMContentLoaded', () => {
       const minMatchesInput = document.getElementById('min-matches');
+      const minAverageInput = document.getElementById('min-average');
+
       if (minMatchesInput) {
         minMatchesInput.addEventListener('input', filterTable);
-        // Filter on page load with default value
-        filterTable();
       }
+
+      if (minAverageInput) {
+        minAverageInput.addEventListener('input', filterTable);
+      }
+
+      // Filter on page load with default values
+      filterTable();
     });
   </script>
 </body>
@@ -133,17 +143,31 @@ __END__
 </div>
 
 <div class="mb-4 bg-white shadow-sm rounded-lg p-4">
-  <div class="flex items-center gap-4">
-    <label for="min-matches" class="text-sm font-medium text-gray-700">
-      Minimum Matches:
-    </label>
-    <input
-      type="number"
-      id="min-matches"
-      value="10"
-      min="0"
-      class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    />
+  <div class="flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-2">
+      <label for="min-matches" class="text-sm font-medium text-gray-700">
+        Minimum Matches:
+      </label>
+      <input
+        type="number"
+        id="min-matches"
+        value="10"
+        min="0"
+        class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm w-24"
+      />
+    </div>
+    <div class="flex items-center gap-2">
+      <label for="min-average" class="text-sm font-medium text-gray-700">
+        Minimum Avg Score:
+      </label>
+      <input
+        type="number"
+        id="min-average"
+        value="-100"
+        step="1"
+        class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm w-24"
+      />
+    </div>
   </div>
 </div>
 
@@ -176,7 +200,7 @@ __END__
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       <% @players.each_with_index do |stats, index| %>
-        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>">
+        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>">
           <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>
