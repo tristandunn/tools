@@ -93,17 +93,22 @@ __END__
   <script>
     // Filter functionality
     function filterTable() {
+      const playerName = document.getElementById('player-name').value.toLowerCase().trim();
       const minMatches = parseInt(document.getElementById('min-matches').value) || 0;
       const minAverage = parseFloat(document.getElementById('min-average').value) || -999;
       const rows = document.querySelectorAll('tbody tr');
       let visibleCount = 0;
 
       rows.forEach(row => {
+        const name = row.dataset.name || '';
         const total = parseInt(row.dataset.total) || 0;
         const average = parseFloat(row.dataset.average) || -999;
 
+        // Check if name matches (if search term provided)
+        const nameMatches = !playerName || name.includes(playerName);
+
         // In golf, lower scores are better, so <= for average (e.g., -30 is better than -20)
-        if (total >= minMatches && average <= minAverage) {
+        if (nameMatches && total >= minMatches && average <= minAverage) {
           row.style.display = '';
           visibleCount++;
         } else {
@@ -117,8 +122,13 @@ __END__
 
     // Add event listeners
     document.addEventListener('DOMContentLoaded', () => {
+      const playerNameInput = document.getElementById('player-name');
       const minMatchesInput = document.getElementById('min-matches');
       const minAverageInput = document.getElementById('min-average');
+
+      if (playerNameInput) {
+        playerNameInput.addEventListener('input', filterTable);
+      }
 
       if (minMatchesInput) {
         minMatchesInput.addEventListener('input', filterTable);
@@ -146,6 +156,17 @@ __END__
 <div class="mb-4 bg-white shadow-sm rounded-lg p-4">
   <div class="flex flex-wrap items-center gap-4">
     <div class="flex items-center gap-2">
+      <label for="player-name" class="text-sm font-medium text-gray-700">
+        Player Name:
+      </label>
+      <input
+        type="text"
+        id="player-name"
+        placeholder="Search..."
+        class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm w-48"
+      />
+    </div>
+    <div class="flex items-center gap-2">
       <label for="min-matches" class="text-sm font-medium text-gray-700">
         Minimum Matches:
       </label>
@@ -159,12 +180,12 @@ __END__
     </div>
     <div class="flex items-center gap-2">
       <label for="min-average" class="text-sm font-medium text-gray-700">
-        Best Avg Score (or better):
+        Minimum Average:
       </label>
       <input
         type="number"
         id="min-average"
-        value="-100"
+        value="-15"
         step="1"
         class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm w-24"
       />
@@ -201,7 +222,7 @@ __END__
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       <% @players.each_with_index do |stats, index| %>
-        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>">
+        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>">
           <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>
