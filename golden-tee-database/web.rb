@@ -102,7 +102,8 @@ __END__
         const total = parseInt(row.dataset.total) || 0;
         const average = parseFloat(row.dataset.average) || -999;
 
-        if (total >= minMatches && average >= minAverage) {
+        // In golf, lower scores are better, so <= for average (e.g., -30 is better than -20)
+        if (total >= minMatches && average <= minAverage) {
           row.style.display = '';
           visibleCount++;
         } else {
@@ -158,7 +159,7 @@ __END__
     </div>
     <div class="flex items-center gap-2">
       <label for="min-average" class="text-sm font-medium text-gray-700">
-        Minimum Avg Score:
+        Best Avg Score (or better):
       </label>
       <input
         type="number"
