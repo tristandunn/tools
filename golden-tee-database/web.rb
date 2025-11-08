@@ -89,6 +89,38 @@ __END__
       <%= yield %>
     </main>
   </div>
+
+  <script>
+    // Filter functionality
+    function filterTable() {
+      const minMatches = parseInt(document.getElementById('min-matches').value) || 0;
+      const rows = document.querySelectorAll('tbody tr');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const total = parseInt(row.dataset.total) || 0;
+        if (total >= minMatches) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // Update visible count
+      document.getElementById('visible-count').textContent = visibleCount;
+    }
+
+    // Add event listener
+    document.addEventListener('DOMContentLoaded', () => {
+      const minMatchesInput = document.getElementById('min-matches');
+      if (minMatchesInput) {
+        minMatchesInput.addEventListener('input', filterTable);
+        // Filter on page load with default value
+        filterTable();
+      }
+    });
+  </script>
 </body>
 </html>
 
@@ -96,8 +128,23 @@ __END__
 <div class="mb-6">
   <h1 class="text-3xl font-bold text-gray-900">Players</h1>
   <p class="mt-2 text-sm text-gray-600">
-    <%= @players.length %> players total
+    <span id="visible-count"><%= @players.length %></span> of <%= @players.length %> players shown
   </p>
+</div>
+
+<div class="mb-4 bg-white shadow-sm rounded-lg p-4">
+  <div class="flex items-center gap-4">
+    <label for="min-matches" class="text-sm font-medium text-gray-700">
+      Minimum Matches:
+    </label>
+    <input
+      type="number"
+      id="min-matches"
+      value="10"
+      min="0"
+      class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+    />
+  </div>
 </div>
 
 <div class="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -129,7 +176,7 @@ __END__
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       <% @players.each_with_index do |stats, index| %>
-        <tr class="hover:bg-gray-50">
+        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>">
           <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>
