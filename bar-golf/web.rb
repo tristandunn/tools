@@ -102,12 +102,13 @@ __END__
 
       rows.forEach(row => {
         const name = row.dataset.name || '';
+        const nickname = row.dataset.nickname || '';
         const total = parseInt(row.dataset.total) || 0;
         const average = parseFloat(row.dataset.average) || -999;
         const latestYear = parseInt(row.dataset.latestYear) || 1980;
 
-        // Check if name matches (if search term provided)
-        const nameMatches = !playerName || name.includes(playerName);
+        // Check if name or nickname matches (if search term provided)
+        const nameMatches = !playerName || name.includes(playerName) || nickname.includes(playerName);
 
         // In golf, lower scores are better, so <= for average (e.g., -30 is better than -20)
         // Check if player has played in minYear or later
@@ -241,7 +242,7 @@ __END__
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       <% @players.each_with_index do |stats, index| %>
-        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>" data-latest-year="<%= stats[:latest_year] %>">
+        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>" data-nickname="<%= (stats[:player].nickname || '').downcase %>" data-latest-year="<%= stats[:latest_year] %>">
           <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>
