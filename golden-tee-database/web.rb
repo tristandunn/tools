@@ -39,7 +39,7 @@ get '/' do
   @players.reject! { |p| p[:player].nickname.nil? || p[:player].nickname.empty? }
 
   # Sort by ELO rating (descending - higher ELO = better player)
-  @players.sort_by! { |p| -p[:elo] }
+  @players.sort_by! { |p| p[:elo] }.reverse!
 
   erb :index
 end
