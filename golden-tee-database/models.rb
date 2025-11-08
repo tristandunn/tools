@@ -107,24 +107,32 @@ class Match < ActiveRecord::Base
   # This handles both:
   # 1. Duplicate data (same match scraped from multiple player pages)
   # 2. Legitimate multiple matches (king of the hill, double elimination)
+  # 3. Tied matches (score equality) - these bypass deduplication to match website behavior
   def self.find_or_create_match(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
     fingerprint = generate_fingerprint(player1_id, player1_score, player2_id, player2_score, course_id, source_id, year)
     player_ids = [player1_id, player2_id].sort
 
-    # Find all matches with this fingerprint
-    existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
+    # Skip deduplication for tied matches (same score for both players)
+    # The website often has bad data where 0-0 matches appear in both wins and losses tables
+    # To match the website's totals, we create separate entries for these
+    unless player1_score == player2_score
+      # Find all matches with this fingerprint
+      existing_matches = Match.where(fingerprint: fingerprint).includes(:match_participations)
 
-    # Check each existing match to see if it already has both these players
-    existing_matches.each do |match|
-      participant_ids = match.match_participations.pluck(:player_id).sort
-      if participant_ids == player_ids
-        # This exact match (same players) already exists - it's a duplicate
-        return [match, false]
+      # Check each existing match to see if it already has both these players
+      existing_matches.each do |match|
+        participant_ids = match.match_participations.pluck(:player_id).sort
+        if participant_ids == player_ids
+          # This exact match (same players) already exists - it's a duplicate
+          return [match, false]
+        end
       end
     end
 
-    # Either no matches with this fingerprint, or existing matches have different players
+    # Either no matches with this fingerprint, or existing matches have different players,
+    # or this is a tied match (which we don't deduplicate)
     # This is a legitimate new match (could be second match between same players)
+    existing_matches = Match.where(fingerprint: fingerprint)
     next_sequence = existing_matches.any? ? existing_matches.maximum(:sequence) + 1 : 1
 
     match = Match.create!(
