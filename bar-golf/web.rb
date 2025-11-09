@@ -122,6 +122,105 @@ __END__
 
       // Update visible count
       document.getElementById('visible-count').textContent = visibleCount;
+
+      // Update rank numbers after filtering/sorting
+      updateRankNumbers();
+    }
+
+    // Update rank numbers for visible rows
+    function updateRankNumbers() {
+      const rows = document.querySelectorAll('tbody tr');
+      let visibleRank = 1;
+
+      rows.forEach(row => {
+        const rankCell = row.querySelector('td:first-child');
+        if (row.style.display !== 'none') {
+          rankCell.textContent = '#' + visibleRank;
+          visibleRank++;
+        }
+      });
+    }
+
+    // Sorting functionality
+    let currentSort = { column: 'elo', direction: 'desc' };
+
+    function sortTable(column) {
+      const tbody = document.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+
+      // Toggle direction if clicking same column
+      if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.column = column;
+        currentSort.direction = 'desc'; // Default to descending for new column
+      }
+
+      // Sort rows
+      rows.sort((a, b) => {
+        let aVal, bVal;
+
+        switch(column) {
+          case 'name':
+            aVal = a.dataset.name || '';
+            bVal = b.dataset.name || '';
+            return currentSort.direction === 'asc'
+              ? aVal.localeCompare(bVal)
+              : bVal.localeCompare(aVal);
+
+          case 'elo':
+            aVal = parseFloat(a.dataset.elo) || 0;
+            bVal = parseFloat(b.dataset.elo) || 0;
+            break;
+
+          case 'average':
+            // In golf, lower (more negative) is better
+            aVal = parseFloat(a.dataset.average) || 999;
+            bVal = parseFloat(b.dataset.average) || 999;
+            // Reverse the comparison for golf scoring
+            return currentSort.direction === 'asc'
+              ? bVal - aVal
+              : aVal - bVal;
+
+          case 'win-pct':
+            aVal = parseFloat(a.dataset.winPct) || 0;
+            bVal = parseFloat(b.dataset.winPct) || 0;
+            break;
+
+          case 'total':
+            aVal = parseInt(a.dataset.total) || 0;
+            bVal = parseInt(b.dataset.total) || 0;
+            break;
+
+          default:
+            return 0;
+        }
+
+        return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      });
+
+      // Re-append rows in sorted order
+      rows.forEach(row => tbody.appendChild(row));
+
+      // Update sort indicators
+      updateSortIndicators(column);
+
+      // Update rank numbers
+      updateRankNumbers();
+    }
+
+    function updateSortIndicators(activeColumn) {
+      // Clear all indicators
+      document.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.textContent = '';
+      });
+
+      // Set active indicator
+      const activeHeader = document.querySelector(`[data-sort="${activeColumn}"]`);
+      if (activeHeader) {
+        const indicator = activeHeader.querySelector('.sort-indicator');
+        indicator.textContent = currentSort.direction === 'asc' ? ' ▲' : ' ▼';
+      }
     }
 
     // Add event listeners
@@ -146,6 +245,17 @@ __END__
       if (minYearInput) {
         minYearInput.addEventListener('input', filterTable);
       }
+
+      // Add click handlers to sortable headers
+      document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+          const column = header.dataset.sort;
+          sortTable(column);
+        });
+      });
+
+      // Set initial sort indicator
+      updateSortIndicators('elo');
 
       // Filter on page load with default values
       filterTable();
@@ -220,29 +330,29 @@ __END__
         <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Rank
         </th>
-        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Player
+        <th scope="col" class="sortable cursor-pointer px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700" data-sort="name">
+          Player <span class="sort-indicator"></span>
         </th>
         <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
           Record
         </th>
-        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Win %
+        <th scope="col" class="sortable cursor-pointer px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700" data-sort="win-pct">
+          Win % <span class="sort-indicator"></span>
         </th>
-        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          ELO
+        <th scope="col" class="sortable cursor-pointer px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700" data-sort="elo">
+          ELO <span class="sort-indicator"></span>
         </th>
-        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Avg
+        <th scope="col" class="sortable cursor-pointer px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700" data-sort="average">
+          Avg <span class="sort-indicator"></span>
         </th>
-        <th scope="col" class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Matches
+        <th scope="col" class="sortable cursor-pointer px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700" data-sort="total">
+          Matches <span class="sort-indicator"></span>
         </th>
       </tr>
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
       <% @players.each_with_index do |stats, index| %>
-        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>" data-nickname="<%= (stats[:player].nickname || '').downcase %>" data-latest-year="<%= stats[:latest_year] %>">
+        <tr class="hover:bg-gray-50" data-total="<%= stats[:total] %>" data-average="<%= stats[:average] || -999 %>" data-name="<%= stats[:player].name.downcase %>" data-nickname="<%= (stats[:player].nickname || '').downcase %>" data-latest-year="<%= stats[:latest_year] %>" data-elo="<%= stats[:elo] %>" data-win-pct="<%= stats[:win_pct] %>">
           <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-gray-700">
             #<%= index + 1 %>
           </td>
