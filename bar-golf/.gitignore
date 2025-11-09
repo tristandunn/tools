@@ -3,9 +3,6 @@ database.sqlite3
 *.sqlite3
 *.sqlite3-*
 
-# Generated static files
-index.html
-
 # Ruby/Bundle
 .bundle/
 vendor/bundle/
