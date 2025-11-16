@@ -1,0 +1,6 @@
+# Ruby/Bundle
+.bundle/
+vendor/bundle/
+
+# Debug files
+debug*.rb

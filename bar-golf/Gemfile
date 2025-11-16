@@ -1,0 +1,8 @@
+source 'https://rubygems.org'
+
+gem 'nokogiri'
+gem 'sqlite3'
+gem 'activerecord'
+gem 'standalone_migrations'
+gem 'sinatra'
+gem 'puma'
