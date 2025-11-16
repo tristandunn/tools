@@ -20,6 +20,7 @@ Player.reset_baseline_cache
   rating = player.rating
   elo = player.elo_rating || 1500.0
   latest_year = player.matches.maximum(:year) || 1980
+  best_finish = player.best_finish_last_year
 
   {
     player: player,
@@ -30,7 +31,8 @@ Player.reset_baseline_cache
     average: avg,
     rating: rating,
     elo: elo,
-    latest_year: latest_year
+    latest_year: latest_year,
+    best_finish: best_finish
   }
 end
 
