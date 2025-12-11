@@ -20,6 +20,13 @@ body {
   font-family: "Monaspace Neon Var", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   line-height: 1.2;
 }
+.wrapper {
+  display: inline-block;
+  text-align: left;
+}
+body {
+  text-align: center;
+}
 pre { margin: 0; }
 .ef0, .black { color: #000000; }
 .ef1, .red { color: #A00000; }
@@ -74,6 +81,9 @@ var stylePattern = regexp.MustCompile(`(?s)<style[^>]*>.*?</style>`)
 
 // promptPattern matches the vim mode indicator at the bottom of Claude's interface.
 var promptPattern = regexp.MustCompile(`-- INSERT --|-- NORMAL --`)
+
+// ansiPattern matches ANSI escape sequences for stripping.
+var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[()][AB012]`)
 
 // ExportSession exports a Claude session to an HTML file using the native
 // kitty remote control protocol.
@@ -141,6 +151,10 @@ func convertANSIToHTML(content, title string) (string, error) {
 	// Remove empty class attributes
 	html = strings.ReplaceAll(html, ` class=""`, "")
 
+	// Wrap content in a centered container
+	html = strings.Replace(html, "<body>", `<body><div class="wrapper">`, 1)
+	html = strings.Replace(html, "</body>", "</div></body>", 1)
+
 	return html, nil
 }
 
@@ -156,11 +170,31 @@ func stripPromptFromContent(content string) string {
 		}
 	}
 
-	// Remove the prompt area (5 lines before the indicator).
-	if promptLine > 5 {
-		lines = lines[:promptLine-5]
+	if promptLine == -1 {
+		return content
 	}
 
+	// Cut from the promptLine back to include the separator and input lines.
+	// The prompt area is typically:
+	//   ─────────────────── (separator)
+	//   > [input text]
+	//   ─────────────────── (separator)
+	//   -- INSERT -- or -- NORMAL --
+	//
+	// We want to remove everything from the first separator onwards.
+	// Search backwards to find where the prompt area starts.
+	cutLine := promptLine
+	for i := promptLine; i >= 0 && i >= promptLine-10; i-- {
+		stripped := ansiPattern.ReplaceAllString(lines[i], "")
+		trimmed := strings.TrimSpace(stripped)
+		// Check if line contains separator dashes (not just starts with)
+		// The separator may have leading spaces or other characters
+		if strings.Contains(trimmed, "─────────────────────") {
+			cutLine = i
+		}
+	}
+
+	lines = lines[:cutLine]
 	return strings.Join(lines, "\n")
 }
 
