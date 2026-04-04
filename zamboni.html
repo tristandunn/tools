@@ -112,8 +112,29 @@ const progressBar = document.getElementById('progress-bar');
 
 // --- Resize ---
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // In portrait mode, we rotate the canvas 90deg via CSS so the rink's
+  // long axis runs vertically. The canvas itself is sized as if landscape.
+  const screenW = window.innerWidth;
+  const screenH = window.innerHeight;
+  const isPortrait = screenH > screenW;
+
+  if (isPortrait) {
+    // Canvas dimensions are swapped (drawn landscape, rotated via CSS)
+    canvas.width = screenH;
+    canvas.height = screenW;
+    canvas.style.transform = 'rotate(90deg)';
+    canvas.style.transformOrigin = 'top left';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = screenW + 'px';
+  } else {
+    canvas.width = screenW;
+    canvas.height = screenH;
+    canvas.style.transform = '';
+    canvas.style.position = '';
+    canvas.style.top = '';
+    canvas.style.left = '';
+  }
 
   const pad = 16;
   const availW = canvas.width - pad * 2;
@@ -596,19 +617,8 @@ function initGyro() {
 }
 
 function handleOrientation(e) {
-  // In landscape mode the tilt axes swap.
-  // screen.orientation.angle: 0=portrait, 90=landscape-left, -90/270=landscape-right
-  const angle = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
-  if (Math.abs(angle) === 90) {
-    // Landscape: beta is the left/right tilt
-    if (e.beta !== null) {
-      gyroGamma = angle === 90 ? e.beta : -e.beta;
-    }
-  } else {
-    // Portrait: gamma is left/right tilt
-    if (e.gamma !== null) {
-      gyroGamma = e.gamma;
-    }
+  if (e.gamma !== null) {
+    gyroGamma = e.gamma; // tilt left/right in portrait
   }
 }
 
