@@ -501,11 +501,11 @@ function update() {
   elapsed = Date.now() - startTime;
 
   // Steering from gyroscope
-  const maxTurn = 0.04;
-  const deadZone = 3;
+  const maxTurn = 0.07;
+  const deadZone = 1.5;
   let steer = 0;
   if (Math.abs(gyroGamma) > deadZone) {
-    steer = ((gyroGamma - Math.sign(gyroGamma) * deadZone) / 40) * maxTurn;
+    steer = ((gyroGamma - Math.sign(gyroGamma) * deadZone) / 20) * maxTurn;
     steer = Math.max(-maxTurn, Math.min(maxTurn, steer));
   }
   zamboni.angle += steer;
@@ -602,7 +602,7 @@ function handleOrientation(e) {
   if (Math.abs(angle) === 90) {
     // Landscape: beta is the left/right tilt
     if (e.beta !== null) {
-      gyroGamma = angle === 90 ? -e.beta : e.beta;
+      gyroGamma = angle === 90 ? e.beta : -e.beta;
     }
   } else {
     // Portrait: gamma is left/right tilt
