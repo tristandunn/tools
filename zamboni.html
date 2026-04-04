@@ -72,13 +72,13 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
 // --- Constants ---
-// NHL rink proportions: 200ft x 85ft, corners ~28ft radius
-const RINK_ASPECT = 200 / 85;
-const CORNER_RATIO = 28 / 200; // corner radius relative to rink width
+// NHL rink in portrait: width=85ft, height=200ft, corners ~28ft radius
+const RINK_ASPECT = 85 / 200; // width / height (tall rink)
+const CORNER_RATIO = 28 / 85; // corner radius relative to rink width
 
 // Grid for tracking cleaned ice
-const GRID_COLS = 120;
-let GRID_ROWS;
+const GRID_ROWS = 120;
+let GRID_COLS;
 
 // Game state
 let rinkX, rinkY, rinkW, rinkH, cornerR;
@@ -88,8 +88,8 @@ let totalCells = 0;
 let cleanedCells = 0;
 
 let zamboni = { x: 0, y: 0, angle: -Math.PI / 2, speed: 0 };
-const ZAMBONI_W_RATIO = 0.045;  // relative to rink width
-const ZAMBONI_H_RATIO = 0.03;
+const ZAMBONI_W_RATIO = 0.09;  // relative to rink width
+const ZAMBONI_H_RATIO = 0.06;
 let zamW, zamH, zamSpeed;
 let turnRate = 0;
 let gyroGamma = 0;
@@ -112,34 +112,14 @@ const progressBar = document.getElementById('progress-bar');
 
 // --- Resize ---
 function resize() {
-  // In portrait mode, we rotate the canvas 90deg via CSS so the rink's
-  // long axis runs vertically. The canvas itself is sized as if landscape.
-  const screenW = window.innerWidth;
-  const screenH = window.innerHeight;
-  const isPortrait = screenH > screenW;
-
-  if (isPortrait) {
-    // Canvas dimensions are swapped (drawn landscape, rotated via CSS)
-    canvas.width = screenH;
-    canvas.height = screenW;
-    canvas.style.transform = 'rotate(90deg)';
-    canvas.style.transformOrigin = 'top left';
-    canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = screenW + 'px';
-  } else {
-    canvas.width = screenW;
-    canvas.height = screenH;
-    canvas.style.transform = '';
-    canvas.style.position = '';
-    canvas.style.top = '';
-    canvas.style.left = '';
-  }
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 
   const pad = 16;
   const availW = canvas.width - pad * 2;
   const availH = canvas.height - pad * 2;
 
+  // Fit the tall rink into the screen
   if (availW / availH > RINK_ASPECT) {
     rinkH = availH;
     rinkW = rinkH * RINK_ASPECT;
@@ -151,13 +131,13 @@ function resize() {
   rinkY = (canvas.height - rinkH) / 2;
   cornerR = rinkW * CORNER_RATIO;
 
-  GRID_ROWS = Math.round(GRID_COLS / RINK_ASPECT);
+  GRID_COLS = Math.round(GRID_ROWS * RINK_ASPECT);
   cellW = rinkW / GRID_COLS;
   cellH = rinkH / GRID_ROWS;
 
   zamW = rinkW * ZAMBONI_W_RATIO;
   zamH = rinkW * ZAMBONI_H_RATIO;
-  zamSpeed = rinkW * 0.0015;  // pixels per frame
+  zamSpeed = rinkH * 0.0007;
 }
 
 // --- Grid helpers ---
@@ -283,47 +263,47 @@ function drawRink() {
     }
   }
 
-  // --- NHL Rink markings ---
-  const lw = rinkW * 0.004; // line width
+  // --- NHL Rink markings (portrait: lines run horizontally, goals top/bottom) ---
+  const lw = rinkH * 0.002; // line width
 
-  // Center red line
+  // Center red line (horizontal)
   ctx.strokeStyle = '#c62828';
   ctx.lineWidth = lw * 1.5;
-  ctx.setLineDash([rinkH * 0.03, rinkH * 0.02]);
+  ctx.setLineDash([rinkW * 0.03, rinkW * 0.02]);
   ctx.beginPath();
-  ctx.moveTo(rinkX + rinkW / 2, rinkY);
-  ctx.lineTo(rinkX + rinkW / 2, rinkY + rinkH);
+  ctx.moveTo(rinkX, rinkY + rinkH / 2);
+  ctx.lineTo(rinkX + rinkW, rinkY + rinkH / 2);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Blue lines
+  // Blue lines (horizontal)
   ctx.strokeStyle = '#1565c0';
   ctx.lineWidth = lw * 2;
-  const blueL = rinkX + rinkW * 0.3;
-  const blueR = rinkX + rinkW * 0.7;
+  const blueT = rinkY + rinkH * 0.3;
+  const blueB = rinkY + rinkH * 0.7;
   ctx.beginPath();
-  ctx.moveTo(blueL, rinkY); ctx.lineTo(blueL, rinkY + rinkH);
+  ctx.moveTo(rinkX, blueT); ctx.lineTo(rinkX + rinkW, blueT);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(blueR, rinkY); ctx.lineTo(blueR, rinkY + rinkH);
+  ctx.moveTo(rinkX, blueB); ctx.lineTo(rinkX + rinkW, blueB);
   ctx.stroke();
 
-  // Goal lines (red)
+  // Goal lines (horizontal, red)
   ctx.strokeStyle = '#c62828';
   ctx.lineWidth = lw;
-  const goalL = rinkX + rinkW * 0.057;
-  const goalR = rinkX + rinkW * 0.943;
+  const goalT = rinkY + rinkH * 0.057;
+  const goalB = rinkY + rinkH * 0.943;
   ctx.beginPath();
-  ctx.moveTo(goalL, rinkY); ctx.lineTo(goalL, rinkY + rinkH);
+  ctx.moveTo(rinkX, goalT); ctx.lineTo(rinkX + rinkW, goalT);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(goalR, rinkY); ctx.lineTo(goalR, rinkY + rinkH);
+  ctx.moveTo(rinkX, goalB); ctx.lineTo(rinkX + rinkW, goalB);
   ctx.stroke();
 
   // Center ice circle
   const centerX = rinkX + rinkW / 2;
   const centerY = rinkY + rinkH / 2;
-  const faceR = rinkH * 0.18;
+  const faceR = rinkW * 0.18;
   ctx.strokeStyle = '#1565c0';
   ctx.lineWidth = lw;
   ctx.beginPath();
@@ -336,12 +316,12 @@ function drawRink() {
   ctx.arc(centerX, centerY, lw * 2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Face-off circles and dots
+  // Face-off circles and dots (4 zone circles)
   const faceOffPositions = [
-    { x: rinkX + rinkW * 0.2, y: rinkY + rinkH * 0.3 },
-    { x: rinkX + rinkW * 0.2, y: rinkY + rinkH * 0.7 },
-    { x: rinkX + rinkW * 0.8, y: rinkY + rinkH * 0.3 },
-    { x: rinkX + rinkW * 0.8, y: rinkY + rinkH * 0.7 },
+    { x: rinkX + rinkW * 0.3, y: rinkY + rinkH * 0.2 },
+    { x: rinkX + rinkW * 0.7, y: rinkY + rinkH * 0.2 },
+    { x: rinkX + rinkW * 0.3, y: rinkY + rinkH * 0.8 },
+    { x: rinkX + rinkW * 0.7, y: rinkY + rinkH * 0.8 },
   ];
   for (const pos of faceOffPositions) {
     ctx.strokeStyle = '#c62828';
@@ -355,24 +335,24 @@ function drawRink() {
     ctx.arc(pos.x, pos.y, lw * 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hash marks
+    // Hash marks (horizontal lines above/below)
     const hLen = faceR * 0.3;
     const hOff = faceR * 1.05;
     ctx.lineWidth = lw * 0.8;
     for (const side of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(pos.x + side * hOff, pos.y - hLen);
-      ctx.lineTo(pos.x + side * hOff, pos.y + hLen);
+      ctx.moveTo(pos.x - hLen, pos.y + side * hOff);
+      ctx.lineTo(pos.x + hLen, pos.y + side * hOff);
       ctx.stroke();
     }
   }
 
   // Neutral zone dots
   const nzDots = [
-    { x: blueL + rinkW * 0.02, y: rinkY + rinkH * 0.3 },
-    { x: blueL + rinkW * 0.02, y: rinkY + rinkH * 0.7 },
-    { x: blueR - rinkW * 0.02, y: rinkY + rinkH * 0.3 },
-    { x: blueR - rinkW * 0.02, y: rinkY + rinkH * 0.7 },
+    { x: rinkX + rinkW * 0.3, y: blueT + rinkH * 0.02 },
+    { x: rinkX + rinkW * 0.7, y: blueT + rinkH * 0.02 },
+    { x: rinkX + rinkW * 0.3, y: blueB - rinkH * 0.02 },
+    { x: rinkX + rinkW * 0.7, y: blueB - rinkH * 0.02 },
   ];
   ctx.fillStyle = '#c62828';
   for (const d of nzDots) {
@@ -381,17 +361,17 @@ function drawRink() {
     ctx.fill();
   }
 
-  // Goal creases
-  const creaseR = rinkH * 0.08;
-  for (const gx of [goalL, goalR]) {
+  // Goal creases (top and bottom)
+  const creaseR = rinkW * 0.08;
+  for (const gy of [goalT, goalB]) {
     ctx.strokeStyle = '#c62828';
     ctx.lineWidth = lw;
     ctx.fillStyle = 'rgba(100,180,255,0.15)';
     ctx.beginPath();
-    if (gx === goalL) {
-      ctx.arc(gx, centerY, creaseR, -Math.PI / 2, Math.PI / 2);
+    if (gy === goalT) {
+      ctx.arc(centerX, gy, creaseR, 0, Math.PI);
     } else {
-      ctx.arc(gx, centerY, creaseR, Math.PI / 2, -Math.PI / 2);
+      ctx.arc(centerX, gy, creaseR, Math.PI, 0);
     }
     ctx.closePath();
     ctx.fill();
@@ -572,10 +552,10 @@ function startGame() {
   resize();
   initGrid();
 
-  // Start position: center of left zone
-  zamboni.x = rinkX + rinkW * 0.15;
-  zamboni.y = rinkY + rinkH / 2;
-  zamboni.angle = 0;
+  // Start position: center of top zone, facing down
+  zamboni.x = rinkX + rinkW / 2;
+  zamboni.y = rinkY + rinkH * 0.15;
+  zamboni.angle = Math.PI / 2;
 
   running = true;
   finished = false;
