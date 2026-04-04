@@ -597,8 +597,10 @@ function initGyro() {
 }
 
 function handleOrientation(e) {
-  if (e.gamma !== null) {
-    gyroGamma = e.gamma; // tilt left/right in portrait
+  // Phone is held landscape but rotation-locked to portrait,
+  // so beta is the left/right tilt from the player's perspective
+  if (e.beta !== null) {
+    gyroGamma = -e.beta;
   }
 }
 
@@ -619,7 +621,7 @@ const origUpdate = function() {
 update = origUpdate;
 
 function handleFirstOrientation(e) {
-  if (e.gamma !== null) window._hasGyro = true;
+  if (e.beta !== null) window._hasGyro = true;
 }
 window.addEventListener('deviceorientation', handleFirstOrientation, { once: true });
 
