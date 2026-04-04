@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Zamboni Ice Cleaner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #111; touch-action: none; }
+  canvas { display: block; }
+  #overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; z-index: 10;
+    background: rgba(0,0,0,0.75); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif;
+    text-align: center; padding: 20px;
+  }
+  #overlay h1 { font-size: 28px; margin-bottom: 12px; }
+  #overlay p { font-size: 16px; margin-bottom: 8px; line-height: 1.4; color: #ccc; }
+  #overlay .big-time { font-size: 48px; font-weight: bold; margin: 16px 0; color: #4fc3f7; }
+  #start-btn {
+    margin-top: 20px; padding: 16px 48px; font-size: 20px; font-weight: bold;
+    border: none; border-radius: 12px; background: #c62828; color: #fff;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  #start-btn:active { background: #e53935; }
+  #hud {
+    position: fixed; top: 12px; left: 0; right: 0; display: flex;
+    justify-content: center; gap: 24px; z-index: 5;
+    font-family: 'Helvetica Neue', Arial, sans-serif; pointer-events: none;
+  }
+  .hud-item {
+    background: rgba(0,0,0,0.6); color: #fff; padding: 6px 14px;
+    border-radius: 8px; font-size: 16px; font-weight: bold;
+  }
+  #progress-bar-bg {
+    position: fixed; bottom: 12px; left: 16px; right: 16px; height: 8px;
+    background: rgba(255,255,255,0.2); border-radius: 4px; z-index: 5;
+  }
+  #progress-bar {
+    height: 100%; width: 0%; background: #4fc3f7; border-radius: 4px;
+    transition: width 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <h1>Zamboni Ice Cleaner</h1>
+  <p>Tilt your phone left and right to steer the Zamboni.<br>Clean all the ice as fast as you can!</p>
+  <div id="end-msg" style="display:none">
+    <p>Ice is clean!</p>
+    <div class="big-time" id="final-time">0:00.0</div>
+  </div>
+  <button id="start-btn">Start</button>
+</div>
+
+<div id="hud" style="display:none">
+  <div class="hud-item" id="hud-time">0:00.0</div>
+  <div class="hud-item" id="hud-pct">0%</div>
+</div>
+<div id="progress-bar-bg" style="display:none"><div id="progress-bar"></div></div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// --- Constants ---
+// NHL rink proportions: 200ft x 85ft, corners ~28ft radius
+const RINK_ASPECT = 200 / 85;
+const CORNER_RATIO = 28 / 200; // corner radius relative to rink width
+
+// Grid for tracking cleaned ice
+const GRID_COLS = 120;
+let GRID_ROWS;
+
+// Game state
+let rinkX, rinkY, rinkW, rinkH, cornerR;
+let cellW, cellH;
+let grid = [];         // 0 = dirty, 1 = clean
+let totalCells = 0;
+let cleanedCells = 0;
+
+let zamboni = { x: 0, y: 0, angle: -Math.PI / 2, speed: 0 };
+const ZAMBONI_W_RATIO = 0.045;  // relative to rink width
+const ZAMBONI_H_RATIO = 0.03;
+let zamW, zamH, zamSpeed;
+let turnRate = 0;
+let gyroGamma = 0;
+
+let running = false;
+let finished = false;
+let startTime = 0;
+let elapsed = 0;
+
+// --- DOM refs ---
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('start-btn');
+const endMsg = document.getElementById('end-msg');
+const finalTimeEl = document.getElementById('final-time');
+const hud = document.getElementById('hud');
+const hudTime = document.getElementById('hud-time');
+const hudPct = document.getElementById('hud-pct');
+const progressBarBg = document.getElementById('progress-bar-bg');
+const progressBar = document.getElementById('progress-bar');
+
+// --- Resize ---
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pad = 16;
+  const availW = canvas.width - pad * 2;
+  const availH = canvas.height - pad * 2;
+
+  if (availW / availH > RINK_ASPECT) {
+    rinkH = availH;
+    rinkW = rinkH * RINK_ASPECT;
+  } else {
+    rinkW = availW;
+    rinkH = rinkW / RINK_ASPECT;
+  }
+  rinkX = (canvas.width - rinkW) / 2;
+  rinkY = (canvas.height - rinkH) / 2;
+  cornerR = rinkW * CORNER_RATIO;
+
+  GRID_ROWS = Math.round(GRID_COLS / RINK_ASPECT);
+  cellW = rinkW / GRID_COLS;
+  cellH = rinkH / GRID_ROWS;
+
+  zamW = rinkW * ZAMBONI_W_RATIO;
+  zamH = rinkW * ZAMBONI_H_RATIO;
+  zamSpeed = rinkW * 0.0015;  // pixels per frame
+}
+
+// --- Grid helpers ---
+function initGrid() {
+  grid = [];
+  totalCells = 0;
+  cleanedCells = 0;
+  for (let r = 0; r < GRID_ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < GRID_COLS; c++) {
+      // Check if cell center is inside the rink shape
+      const cx = rinkX + (c + 0.5) * cellW;
+      const cy = rinkY + (r + 0.5) * cellH;
+      if (isInsideRink(cx, cy)) {
+        grid[r][c] = 0; // dirty
+        totalCells++;
+      } else {
+        grid[r][c] = -1; // outside
+      }
+    }
+  }
+}
+
+function isInsideRink(px, py) {
+  // Rectangle with rounded corners
+  if (px < rinkX || px > rinkX + rinkW || py < rinkY || py > rinkY + rinkH) return false;
+
+  const cr = cornerR;
+  // Check corners
+  const corners = [
+    { cx: rinkX + cr, cy: rinkY + cr },
+    { cx: rinkX + rinkW - cr, cy: rinkY + cr },
+    { cx: rinkX + cr, cy: rinkY + rinkH - cr },
+    { cx: rinkX + rinkW - cr, cy: rinkY + rinkH - cr },
+  ];
+  for (const corner of corners) {
+    if (
+      (px < corner.cx && corner.cx === rinkX + cr || px > corner.cx && corner.cx === rinkX + rinkW - cr) &&
+      (py < corner.cy && corner.cy === rinkY + cr || py > corner.cy && corner.cy === rinkY + rinkH - cr)
+    ) {
+      const dx = px - corner.cx;
+      const dy = py - corner.cy;
+      if (dx * dx + dy * dy > cr * cr) return false;
+    }
+  }
+  return true;
+}
+
+function markCleaned(px, py) {
+  // Mark cells under the zamboni's cleaning width
+  const halfW = zamW * 0.45;
+  const halfH = zamH * 0.45;
+  const cos = Math.cos(zamboni.angle);
+  const sin = Math.sin(zamboni.angle);
+
+  // Sample several points across the zamboni width
+  for (let s = -1; s <= 1; s += 0.5) {
+    const wx = px + sin * halfH * s;
+    const wy = py - cos * halfH * s;
+    const col = Math.floor((wx - rinkX) / cellW);
+    const row = Math.floor((wy - rinkY) / cellH);
+    if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS && grid[row][col] === 0) {
+      grid[row][col] = 1;
+      cleanedCells++;
+    }
+  }
+}
+
+// --- Drawing ---
+function drawRink() {
+  const cr = cornerR;
+
+  // Board area (dark)
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Rink ice surface
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(rinkX + cr, rinkY);
+  ctx.lineTo(rinkX + rinkW - cr, rinkY);
+  ctx.arcTo(rinkX + rinkW, rinkY, rinkX + rinkW, rinkY + cr, cr);
+  ctx.lineTo(rinkX + rinkW, rinkY + rinkH - cr);
+  ctx.arcTo(rinkX + rinkW, rinkY + rinkH, rinkX + rinkW - cr, rinkY + rinkH, cr);
+  ctx.lineTo(rinkX + cr, rinkY + rinkH);
+  ctx.arcTo(rinkX, rinkY + rinkH, rinkX, rinkY + rinkH - cr, cr);
+  ctx.lineTo(rinkX, rinkY + cr);
+  ctx.arcTo(rinkX, rinkY, rinkX + cr, rinkY, cr);
+  ctx.closePath();
+  ctx.clip();
+
+  // Dirty ice base
+  ctx.fillStyle = '#d8e8f0';
+  ctx.fillRect(rinkX, rinkY, rinkW, rinkH);
+
+  // Draw cleaned cells (brighter)
+  ctx.fillStyle = '#f0f6fa';
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (grid[r][c] === 1) {
+        ctx.fillRect(rinkX + c * cellW, rinkY + r * cellH, cellW + 0.5, cellH + 0.5);
+      }
+    }
+  }
+
+  // Scratch marks on dirty ice
+  ctx.strokeStyle = 'rgba(180,200,210,0.4)';
+  ctx.lineWidth = 0.5;
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (grid[r][c] === 0) {
+        // Deterministic pseudo-random scratches
+        const seed = r * GRID_COLS + c;
+        if (seed % 3 === 0) {
+          const sx = rinkX + c * cellW + (seed % 7) * cellW / 7;
+          const sy = rinkY + r * cellH + (seed % 5) * cellH / 5;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + cellW * 0.6, sy + cellH * 0.3);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // --- NHL Rink markings ---
+  const lw = rinkW * 0.004; // line width
+
+  // Center red line
+  ctx.strokeStyle = '#c62828';
+  ctx.lineWidth = lw * 1.5;
+  ctx.setLineDash([rinkH * 0.03, rinkH * 0.02]);
+  ctx.beginPath();
+  ctx.moveTo(rinkX + rinkW / 2, rinkY);
+  ctx.lineTo(rinkX + rinkW / 2, rinkY + rinkH);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Blue lines
+  ctx.strokeStyle = '#1565c0';
+  ctx.lineWidth = lw * 2;
+  const blueL = rinkX + rinkW * 0.3;
+  const blueR = rinkX + rinkW * 0.7;
+  ctx.beginPath();
+  ctx.moveTo(blueL, rinkY); ctx.lineTo(blueL, rinkY + rinkH);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(blueR, rinkY); ctx.lineTo(blueR, rinkY + rinkH);
+  ctx.stroke();
+
+  // Goal lines (red)
+  ctx.strokeStyle = '#c62828';
+  ctx.lineWidth = lw;
+  const goalL = rinkX + rinkW * 0.057;
+  const goalR = rinkX + rinkW * 0.943;
+  ctx.beginPath();
+  ctx.moveTo(goalL, rinkY); ctx.lineTo(goalL, rinkY + rinkH);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(goalR, rinkY); ctx.lineTo(goalR, rinkY + rinkH);
+  ctx.stroke();
+
+  // Center ice circle
+  const centerX = rinkX + rinkW / 2;
+  const centerY = rinkY + rinkH / 2;
+  const faceR = rinkH * 0.18;
+  ctx.strokeStyle = '#1565c0';
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, faceR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Center dot
+  ctx.fillStyle = '#1565c0';
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, lw * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Face-off circles and dots
+  const faceOffPositions = [
+    { x: rinkX + rinkW * 0.2, y: rinkY + rinkH * 0.3 },
+    { x: rinkX + rinkW * 0.2, y: rinkY + rinkH * 0.7 },
+    { x: rinkX + rinkW * 0.8, y: rinkY + rinkH * 0.3 },
+    { x: rinkX + rinkW * 0.8, y: rinkY + rinkH * 0.7 },
+  ];
+  for (const pos of faceOffPositions) {
+    ctx.strokeStyle = '#c62828';
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, faceR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#c62828';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, lw * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hash marks
+    const hLen = faceR * 0.3;
+    const hOff = faceR * 1.05;
+    ctx.lineWidth = lw * 0.8;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(pos.x + side * hOff, pos.y - hLen);
+      ctx.lineTo(pos.x + side * hOff, pos.y + hLen);
+      ctx.stroke();
+    }
+  }
+
+  // Neutral zone dots
+  const nzDots = [
+    { x: blueL + rinkW * 0.02, y: rinkY + rinkH * 0.3 },
+    { x: blueL + rinkW * 0.02, y: rinkY + rinkH * 0.7 },
+    { x: blueR - rinkW * 0.02, y: rinkY + rinkH * 0.3 },
+    { x: blueR - rinkW * 0.02, y: rinkY + rinkH * 0.7 },
+  ];
+  ctx.fillStyle = '#c62828';
+  for (const d of nzDots) {
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, lw * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Goal creases
+  const creaseR = rinkH * 0.08;
+  for (const gx of [goalL, goalR]) {
+    ctx.strokeStyle = '#c62828';
+    ctx.lineWidth = lw;
+    ctx.fillStyle = 'rgba(100,180,255,0.15)';
+    ctx.beginPath();
+    if (gx === goalL) {
+      ctx.arc(gx, centerY, creaseR, -Math.PI / 2, Math.PI / 2);
+    } else {
+      ctx.arc(gx, centerY, creaseR, Math.PI / 2, -Math.PI / 2);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  // Board outline
+  ctx.strokeStyle = '#d32f2f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(rinkX + cr, rinkY);
+  ctx.lineTo(rinkX + rinkW - cr, rinkY);
+  ctx.arcTo(rinkX + rinkW, rinkY, rinkX + rinkW, rinkY + cr, cr);
+  ctx.lineTo(rinkX + rinkW, rinkY + rinkH - cr);
+  ctx.arcTo(rinkX + rinkW, rinkY + rinkH, rinkX + rinkW - cr, rinkY + rinkH, cr);
+  ctx.lineTo(rinkX + cr, rinkY + rinkH);
+  ctx.arcTo(rinkX, rinkY + rinkH, rinkX, rinkY + rinkH - cr, cr);
+  ctx.lineTo(rinkX, rinkY + cr);
+  ctx.arcTo(rinkX, rinkY, rinkX + cr, rinkY, cr);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Yellow board kick-plate
+  ctx.strokeStyle = '#fdd835';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawZamboni() {
+  ctx.save();
+  ctx.translate(zamboni.x, zamboni.y);
+  ctx.rotate(zamboni.angle);
+
+  const w = zamW;
+  const h = zamH;
+
+  // Body
+  ctx.fillStyle = '#f5f5f5';
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  // Cab (front portion)
+  ctx.fillStyle = '#1565c0';
+  ctx.beginPath();
+  ctx.roundRect(w * 0.1, -h * 0.35, w * 0.35, h * 0.7, 2);
+  ctx.fill();
+
+  // Windshield
+  ctx.fillStyle = 'rgba(135,206,250,0.6)';
+  ctx.fillRect(w * 0.32, -h * 0.25, w * 0.06, h * 0.5);
+
+  // Ice tank (rear)
+  ctx.fillStyle = '#90a4ae';
+  ctx.beginPath();
+  ctx.roundRect(-w * 0.45, -h * 0.4, w * 0.4, h * 0.8, 2);
+  ctx.fill();
+
+  // Wheels
+  ctx.fillStyle = '#222';
+  const wheelW = w * 0.08;
+  const wheelH = h * 0.2;
+  ctx.fillRect(-w * 0.35 - wheelW/2, -h / 2 - wheelH * 0.3, wheelW, wheelH);
+  ctx.fillRect(-w * 0.35 - wheelW/2, h / 2 - wheelH * 0.7, wheelW, wheelH);
+  ctx.fillRect(w * 0.25 - wheelW/2, -h / 2 - wheelH * 0.3, wheelW, wheelH);
+  ctx.fillRect(w * 0.25 - wheelW/2, h / 2 - wheelH * 0.7, wheelW, wheelH);
+
+  ctx.restore();
+}
+
+// --- Collision / bounds ---
+function clampToRink() {
+  const margin = zamW * 0.4;
+  const cr = cornerR;
+
+  // Simple rectangular clamp first
+  zamboni.x = Math.max(rinkX + margin, Math.min(rinkX + rinkW - margin, zamboni.x));
+  zamboni.y = Math.max(rinkY + margin, Math.min(rinkY + rinkH - margin, zamboni.y));
+
+  // Corner collision
+  const corners = [
+    { cx: rinkX + cr, cy: rinkY + cr },
+    { cx: rinkX + rinkW - cr, cy: rinkY + cr },
+    { cx: rinkX + cr, cy: rinkY + rinkH - cr },
+    { cx: rinkX + rinkW - cr, cy: rinkY + rinkH - cr },
+  ];
+  for (const corner of corners) {
+    const inCornerZone =
+      (corner.cx === rinkX + cr ? zamboni.x < corner.cx : zamboni.x > corner.cx) &&
+      (corner.cy === rinkY + cr ? zamboni.y < corner.cy : zamboni.y > corner.cy);
+    if (inCornerZone) {
+      const dx = zamboni.x - corner.cx;
+      const dy = zamboni.y - corner.cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const maxDist = cr - margin;
+      if (dist > maxDist) {
+        zamboni.x = corner.cx + (dx / dist) * maxDist;
+        zamboni.y = corner.cy + (dy / dist) * maxDist;
+        // Deflect angle along the wall
+        const wallAngle = Math.atan2(dy, dx);
+        const diff = zamboni.angle - wallAngle;
+        if (Math.abs(Math.sin(diff)) > 0.3) {
+          zamboni.angle += Math.sin(diff) > 0 ? -0.05 : 0.05;
+        }
+      }
+    }
+  }
+}
+
+// --- Time formatting ---
+function formatTime(ms) {
+  const totalSec = ms / 1000;
+  const min = Math.floor(totalSec / 60);
+  const sec = Math.floor(totalSec % 60);
+  const tenths = Math.floor((totalSec % 1) * 10);
+  return `${min}:${sec.toString().padStart(2, '0')}.${tenths}`;
+}
+
+// --- Game loop ---
+function update() {
+  if (!running) return;
+
+  elapsed = Date.now() - startTime;
+
+  // Steering from gyroscope
+  const maxTurn = 0.04;
+  const deadZone = 3;
+  let steer = 0;
+  if (Math.abs(gyroGamma) > deadZone) {
+    steer = ((gyroGamma - Math.sign(gyroGamma) * deadZone) / 40) * maxTurn;
+    steer = Math.max(-maxTurn, Math.min(maxTurn, steer));
+  }
+  zamboni.angle += steer;
+
+  // Move forward
+  zamboni.x += Math.cos(zamboni.angle) * zamSpeed;
+  zamboni.y += Math.sin(zamboni.angle) * zamSpeed;
+
+  // Bounce off walls
+  clampToRink();
+
+  // Mark cleaned
+  markCleaned(zamboni.x, zamboni.y);
+
+  // Check completion
+  const pct = cleanedCells / totalCells;
+  if (pct >= 0.97) {
+    finish();
+  }
+}
+
+function draw() {
+  drawRink();
+  drawZamboni();
+
+  // HUD update
+  if (running) {
+    hudTime.textContent = formatTime(elapsed);
+    const pct = Math.min(100, Math.round((cleanedCells / totalCells) * 100));
+    hudPct.textContent = pct + '%';
+    progressBar.style.width = pct + '%';
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// --- Start / Finish ---
+function startGame() {
+  resize();
+  initGrid();
+
+  // Start position: center of left zone
+  zamboni.x = rinkX + rinkW * 0.15;
+  zamboni.y = rinkY + rinkH / 2;
+  zamboni.angle = 0;
+
+  running = true;
+  finished = false;
+  startTime = Date.now();
+  elapsed = 0;
+
+  overlay.style.display = 'none';
+  endMsg.style.display = 'none';
+  hud.style.display = 'flex';
+  progressBarBg.style.display = 'block';
+}
+
+function finish() {
+  if (finished) return;
+  finished = true;
+  running = false;
+
+  finalTimeEl.textContent = formatTime(elapsed);
+  endMsg.style.display = 'block';
+  startBtn.textContent = 'Play Again';
+  overlay.style.display = 'flex';
+  hud.style.display = 'none';
+  progressBarBg.style.display = 'none';
+}
+
+// --- Gyroscope ---
+function initGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+
+    DeviceOrientationEvent.requestPermission().then(response => {
+      if (response === 'granted') {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    }).catch(console.error);
+  } else {
+    window.addEventListener('deviceorientation', handleOrientation);
+  }
+}
+
+function handleOrientation(e) {
+  if (e.gamma !== null) {
+    gyroGamma = e.gamma; // -90 to 90, tilt left/right
+  }
+}
+
+// --- Keyboard fallback for desktop testing ---
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key] = true; });
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+const _origUpdate = update;
+const origUpdate = function() {
+  // Keyboard override for desktop
+  if (keys['ArrowLeft'] || keys['a']) gyroGamma = -25;
+  else if (keys['ArrowRight'] || keys['d']) gyroGamma = 25;
+  else if (!window._hasGyro) gyroGamma *= 0.9;
+  _origUpdate();
+};
+// Replace update
+update = origUpdate;
+
+function handleFirstOrientation(e) {
+  if (e.gamma !== null) window._hasGyro = true;
+}
+window.addEventListener('deviceorientation', handleFirstOrientation, { once: true });
+
+// --- Init ---
+startBtn.addEventListener('click', () => {
+  initGyro();
+  startGame();
+});
+
+window.addEventListener('resize', () => {
+  resize();
+  if (!running && !finished) initGrid();
+});
+
+resize();
+initGrid();
+loop();
+</script>
+</body>
+</html>
