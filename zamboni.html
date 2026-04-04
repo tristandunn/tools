@@ -73,8 +73,9 @@ let totalCells = 0;
 let cleanedCells = 0;
 
 let zamboni = { x: 0, y: 0, angle: -Math.PI / 2, speed: 0 };
-const ZAMBONI_W_RATIO = 0.09;  // relative to rink width
-const ZAMBONI_H_RATIO = 0.06;
+// Real Zamboni ~15ft long x 8ft wide, rink is 85ft wide
+const ZAMBONI_W_RATIO = 0.176;  // length relative to rink width (15/85)
+const ZAMBONI_H_RATIO = 0.094;  // width relative to rink width (8/85)
 let zamW, zamH, zamSpeed;
 let turnRate = 0;
 let gyroGamma = 0;
@@ -123,7 +124,7 @@ function resize() {
 
   zamW = rinkW * ZAMBONI_W_RATIO;
   zamH = rinkW * ZAMBONI_H_RATIO;
-  zamSpeed = rinkH * 0.0007;
+  zamSpeed = rinkH * 0.0014;
 }
 
 // --- Grid helpers ---
