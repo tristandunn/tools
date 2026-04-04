@@ -600,7 +600,7 @@ function handleOrientation(e) {
   // Phone is held landscape but rotation-locked to portrait,
   // so beta is the left/right tilt from the player's perspective
   if (e.beta !== null) {
-    gyroGamma = -e.beta;
+    gyroGamma = e.beta;
   }
 }
 
