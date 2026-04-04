@@ -29,24 +29,7 @@
     cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
   #start-btn:active { background: #e53935; }
-  #hud {
-    position: fixed; bottom: 12px; left: 12px; display: flex;
-    flex-direction: row; gap: 10px; z-index: 5;
-    font-family: 'Helvetica Neue', Arial, sans-serif; pointer-events: none;
-    transform: rotate(-90deg); transform-origin: bottom left;
-  }
-  .hud-item {
-    background: rgba(0,0,0,0.6); color: #fff; padding: 6px 14px;
-    border-radius: 8px; font-size: 16px; font-weight: bold;
-  }
-  #progress-bar-bg {
-    position: fixed; top: 16px; bottom: 16px; left: 12px; width: 8px;
-    background: rgba(255,255,255,0.2); border-radius: 4px; z-index: 5;
-  }
-  #progress-bar {
-    width: 100%; height: 0%; background: #4fc3f7; border-radius: 4px;
-    transition: height 0.3s; position: absolute; bottom: 0;
-  }
+  #hud, #progress-bar-bg { display: none !important; }
 </style>
 </head>
 <body>
@@ -530,17 +513,47 @@ function update() {
   }
 }
 
+function drawHUD() {
+  if (!running) return;
+  const pct = Math.min(100, Math.round((cleanedCells / totalCells) * 100));
+  const timeStr = formatTime(elapsed);
+  const fontSize = rinkW * 0.07;
+
+  ctx.save();
+  ctx.font = `bold ${fontSize}px 'Helvetica Neue', Arial, sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  // Draw time (top-left of rink area)
+  const labelY = rinkY - fontSize * 0.8;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  const tw = ctx.measureText(timeStr).width;
+  ctx.fillRect(rinkX, labelY - fontSize * 0.6, tw + fontSize * 0.6, fontSize * 1.2);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(timeStr, rinkX + fontSize * 0.3, labelY);
+
+  // Draw percentage (top-right of rink area)
+  const pctStr = pct + '%';
+  const pw = ctx.measureText(pctStr).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(rinkX + rinkW - pw - fontSize * 0.6, labelY - fontSize * 0.6, pw + fontSize * 0.6, fontSize * 1.2);
+  ctx.fillStyle = '#4fc3f7';
+  ctx.fillText(pctStr, rinkX + rinkW - pw - fontSize * 0.3, labelY);
+
+  // Progress bar (below rink)
+  const barY = rinkY + rinkH + fontSize * 0.4;
+  const barH = fontSize * 0.3;
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillRect(rinkX, barY, rinkW, barH);
+  ctx.fillStyle = '#4fc3f7';
+  ctx.fillRect(rinkX, barY, rinkW * (pct / 100), barH);
+
+  ctx.restore();
+}
+
 function draw() {
   drawRink();
   drawZamboni();
-
-  // HUD update
-  if (running) {
-    hudTime.textContent = formatTime(elapsed);
-    const pct = Math.min(100, Math.round((cleanedCells / totalCells) * 100));
-    hudPct.textContent = pct + '%';
-    progressBar.style.height = pct + '%';
-  }
+  drawHUD();
 }
 
 function loop() {
@@ -566,8 +579,6 @@ function startGame() {
 
   overlay.style.display = 'none';
   endMsg.style.display = 'none';
-  hud.style.display = 'flex';
-  progressBarBg.style.display = 'block';
 }
 
 function finish() {
@@ -579,8 +590,6 @@ function finish() {
   endMsg.style.display = 'block';
   startBtn.textContent = 'Play Again';
   overlay.style.display = 'flex';
-  hud.style.display = 'none';
-  progressBarBg.style.display = 'none';
 }
 
 // --- Gyroscope ---
