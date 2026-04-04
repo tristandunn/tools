@@ -100,9 +100,10 @@ function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  const pad = 16;
-  const availW = canvas.width - pad * 2;
-  const availH = canvas.height - pad * 2;
+  const padX = 40; // extra side room for HUD (top/bottom in landscape)
+  const padY = 16;
+  const availW = canvas.width - padX * 2;
+  const availH = canvas.height - padY * 2;
 
   // Fit the tall rink into the screen
   if (availW / availH > RINK_ASPECT) {
@@ -522,30 +523,33 @@ function drawHUD() {
   ctx.save();
   ctx.font = `bold ${fontSize}px 'Helvetica Neue', Arial, sans-serif`;
   ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
 
-  // Draw time (top-left of rink area)
-  const labelY = rinkY - fontSize * 0.8;
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  const tw = ctx.measureText(timeStr).width;
-  ctx.fillRect(rinkX, labelY - fontSize * 0.6, tw + fontSize * 0.6, fontSize * 1.2);
+  // All text is rotated 90deg CW so it reads correctly in landscape.
+  // Left side of rink = "top" in landscape view (time + pct)
+  const lx = rinkX - fontSize * 1.2;
+
+  ctx.save();
+  ctx.translate(lx, rinkY + rinkH * 0.15);
+  ctx.rotate(Math.PI / 2);
   ctx.fillStyle = '#fff';
-  ctx.fillText(timeStr, rinkX + fontSize * 0.3, labelY);
+  ctx.fillText(timeStr, 0, 0);
+  ctx.restore();
 
-  // Draw percentage (top-right of rink area)
-  const pctStr = pct + '%';
-  const pw = ctx.measureText(pctStr).width;
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(rinkX + rinkW - pw - fontSize * 0.6, labelY - fontSize * 0.6, pw + fontSize * 0.6, fontSize * 1.2);
+  ctx.save();
+  ctx.translate(lx, rinkY + rinkH * 0.85);
+  ctx.rotate(Math.PI / 2);
   ctx.fillStyle = '#4fc3f7';
-  ctx.fillText(pctStr, rinkX + rinkW - pw - fontSize * 0.3, labelY);
+  ctx.fillText(pct + '%', 0, 0);
+  ctx.restore();
 
-  // Progress bar (below rink)
-  const barY = rinkY + rinkH + fontSize * 0.4;
-  const barH = fontSize * 0.3;
+  // Progress bar on right side of rink = "bottom" in landscape view
+  const barX = rinkX + rinkW + fontSize * 0.5;
+  const barW = fontSize * 0.3;
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.fillRect(rinkX, barY, rinkW, barH);
+  ctx.fillRect(barX, rinkY, barW, rinkH);
   ctx.fillStyle = '#4fc3f7';
-  ctx.fillRect(rinkX, barY, rinkW * (pct / 100), barH);
+  ctx.fillRect(barX, rinkY, barW, rinkH * (pct / 100));
 
   ctx.restore();
 }
