@@ -11,9 +11,14 @@ email on screen to slip past a wall of them.
 
 Controls:
 
-- **Move** — Left/Right arrows or A/D
-- **Jump** — Up / W / Space
-- **Freeze** — F or Shift (limited charges per level)
+- **Move** — Left/Right arrows or A/D (or the on-screen pad on touch)
+- **Jump** — Up / W / Space (or the JUMP button)
+- **Freeze** — F or Shift (or the FREEZE button; limited charges per level)
+- **Pause** — P / pause button   •   **Mute** — M / mute button
+
+Includes a title screen, 3 levels of increasing difficulty, lives, a score with
+a saved best (localStorage), synthesized sound effects, a parallax background,
+and full touch support — all generated at runtime with no asset files.
 
 The whole thing is static HTML/CSS/JS:
 
