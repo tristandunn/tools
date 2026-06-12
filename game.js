@@ -2,12 +2,12 @@
 //
 // Goal: reach the flag at the end of each level while dodging incoming emails.
 // Controls:
-//   Move      — Left/Right arrows or A/D
-//   Jump      — Up / W / Space
-//   Freeze    — F or Shift (briefly freezes every email; limited charges)
+//   Move      — Left/Right arrows or A/D  (or the on-screen pad on touch)
+//   Jump      — Up / W / Space            (or the JUMP button on touch)
+//   Freeze    — F or Shift                (or the FREEZE button on touch)
 //
 // Built on Phaser 3. All art is generated at runtime, so there are no asset
-// files to load.
+// files to load. The canvas scales to fit any screen and supports touch.
 
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -25,10 +25,15 @@ const START_LIVES = 3;
 
 const config = {
   type: Phaser.AUTO,
-  width: WIDTH,
-  height: HEIGHT,
   parent: "game",
   backgroundColor: "#1d1f2b",
+  // Scale to fit the viewport while keeping the 800x600 aspect ratio.
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: WIDTH,
+    height: HEIGHT,
+  },
   physics: {
     default: "arcade",
     arcade: { gravity: { y: 1400 }, debug: false },
@@ -53,8 +58,13 @@ let freezeCharges = 0;
 let frozenUntil = 0; // timestamp; emails are frozen while now < frozenUntil
 let invulnUntil = 0; // brief mercy window after a hit
 let levelOver = false;
+let restartRequested = false;
 
 let hud;
+let isTouch = false;
+
+// Touch input is funneled into this object and merged with the keyboard.
+const touch = { left: false, right: false, jump: false, freezeQueued: false };
 
 // --- Texture generation -----------------------------------------------------
 function preload() {
@@ -111,6 +121,16 @@ function create() {
   cursors = this.input.keyboard.createCursorKeys();
   keys = this.input.keyboard.addKeys("W,A,D,F,SHIFT,SPACE,R");
 
+  // Allow several simultaneous touches (e.g. move + jump at once).
+  this.input.addPointer(2);
+  isTouch = this.sys.game.device.input.touch;
+  if (isTouch) createTouchControls.call(this);
+
+  // Tap anywhere to restart once a level is over (handy on touch).
+  this.input.on("pointerdown", () => {
+    if (levelOver) restartRequested = true;
+  });
+
   // HUD lives in screen space, so it ignores the camera scroll.
   hud = this.add
     .text(16, 14, "", {
@@ -126,6 +146,7 @@ function create() {
 function startLevel() {
   const level = LEVELS[levelIndex];
   levelOver = false;
+  restartRequested = false;
   freezeCharges = level.freezeCharges;
   frozenUntil = 0;
   invulnUntil = 0;
@@ -176,10 +197,51 @@ function spawnEmail() {
   const email = emails.create(x, y, "email");
   email.setVelocityX(-Phaser.Math.Between(level.emailSpeed - 40, level.emailSpeed + 60));
   email.body.setSize(40, 28);
-  email.baseTintApplied = false;
+}
 
-  // Clean up emails that fly off the left side.
-  email.checkWorldBounds = true;
+// --- Touch controls ---------------------------------------------------------
+function createTouchControls() {
+  const makeButton = (x, y, r, label, color) => {
+    const circle = this.add
+      .circle(x, y, r, color, 0.28)
+      .setScrollFactor(0)
+      .setDepth(30)
+      .setStrokeStyle(2, 0xffffff, 0.5)
+      .setInteractive(new Phaser.Geom.Circle(r, r, r), Phaser.Geom.Circle.Contains);
+    this.add
+      .text(x, y, label, {
+        fontFamily: "system-ui, sans-serif",
+        fontSize: "16px",
+        color: "#ffffff",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(31);
+    return circle;
+  };
+
+  const baseY = HEIGHT - 70;
+
+  // Left / right pad on the bottom-left.
+  const leftBtn = makeButton(70, baseY, 42, "◀", 0x5cc8ff);
+  const rightBtn = makeButton(168, baseY, 42, "▶", 0x5cc8ff);
+
+  // Jump + freeze on the bottom-right.
+  const jumpBtn = makeButton(WIDTH - 70, baseY, 46, "JUMP", 0x6bd968);
+  const freezeBtn = makeButton(WIDTH - 168, baseY - 10, 40, "FREEZE", 0x7fd0ff);
+
+  // Held buttons set/clear their flag; releasing or sliding off clears it.
+  const hold = (btn, key) => {
+    btn.on("pointerdown", () => (touch[key] = true));
+    btn.on("pointerup", () => (touch[key] = false));
+    btn.on("pointerout", () => (touch[key] = false));
+  };
+  hold(leftBtn, "left");
+  hold(rightBtn, "right");
+  hold(jumpBtn, "jump");
+
+  // Freeze is a one-shot: queue it on press, consumed in update().
+  freezeBtn.on("pointerdown", () => (touch.freezeQueued = true));
 }
 
 // --- Per-frame update -------------------------------------------------------
@@ -190,9 +252,9 @@ function update(time) {
 
   // Handle restart after game over / win.
   if (levelOver) {
-    if (Phaser.Input.Keyboard.JustDown(keys.R)) {
+    if (Phaser.Input.Keyboard.JustDown(keys.R) || restartRequested) {
+      restartRequested = false;
       this.scene.restart();
-      // Reset run state on a full restart from game over.
       if (lives <= 0) {
         lives = START_LIVES;
         levelIndex = 0;
@@ -202,9 +264,9 @@ function update(time) {
     return;
   }
 
-  // Horizontal movement.
-  const left = cursors.left.isDown || keys.A.isDown;
-  const right = cursors.right.isDown || keys.D.isDown;
+  // Horizontal movement (keyboard or touch).
+  const left = cursors.left.isDown || keys.A.isDown || touch.left;
+  const right = cursors.right.isDown || keys.D.isDown || touch.right;
   if (left) {
     player.setVelocityX(-260);
     player.setFlipX(true);
@@ -216,13 +278,16 @@ function update(time) {
   }
 
   // Jump (only when standing on something).
-  const jump = cursors.up.isDown || keys.W.isDown || keys.SPACE.isDown;
+  const jump = cursors.up.isDown || keys.W.isDown || keys.SPACE.isDown || touch.jump;
   if (jump && player.body.blocked.down) {
     player.setVelocityY(-650);
   }
 
-  // Freeze ability.
-  if ((Phaser.Input.Keyboard.JustDown(keys.F) || Phaser.Input.Keyboard.JustDown(keys.SHIFT)) && freezeCharges > 0 && !frozen) {
+  // Freeze ability (keyboard edge or queued touch press).
+  const freezePressed =
+    Phaser.Input.Keyboard.JustDown(keys.F) || Phaser.Input.Keyboard.JustDown(keys.SHIFT) || touch.freezeQueued;
+  touch.freezeQueued = false;
+  if (freezePressed && freezeCharges > 0 && !frozen) {
     freezeCharges -= 1;
     frozenUntil = time + FREEZE_DURATION;
   }
@@ -280,9 +345,9 @@ function winLevel() {
 
   if (levelIndex < LEVELS.length - 1) {
     levelIndex += 1;
-    showBanner.call(this, "Level cleared!\nPress R for the next level");
+    showBanner.call(this, "Level cleared!\n" + restartHint());
   } else {
-    showBanner.call(this, "You beat your inbox!\nPress R to play again");
+    showBanner.call(this, "You beat your inbox!\n" + restartHint());
     levelIndex = 0; // loop back to the start on replay
   }
 }
@@ -290,7 +355,11 @@ function winLevel() {
 function gameOver() {
   levelOver = true;
   if (emailTimer) emailTimer.remove();
-  showBanner.call(this, "Buried in email...\nPress R to restart");
+  showBanner.call(this, "Buried in email...\n" + restartHint());
+}
+
+function restartHint() {
+  return isTouch ? "Tap to continue" : "Press R to continue";
 }
 
 function showBanner(text) {
@@ -316,7 +385,7 @@ function drawHud(frozen) {
   hud.setText(
     [
       "Lives: " + "♥".repeat(Math.max(0, lives)),
-      "Freeze: " + freezeLabel + "   (F / Shift)",
+      "Freeze: " + freezeLabel,
       "Level " + (levelIndex + 1) + " — " + progress + "%",
     ].join("\n")
   );
